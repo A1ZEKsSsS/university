@@ -1,4 +1,12 @@
-// --- Вспомогательные функции (без изменений) ---
+const express = require('express');
+const cors = require('cors'); // Для связи между client и server
+
+const app = express();
+app.use(cors()); // Включаем CORS
+app.use(express.json()); // Позволяет серверу читать JSON из запросов
+
+// --- СЮДА КОПИРУЕМ ВАШИ ФУНКЦИИ АЛГОРИТМА ---
+// (Я скопировал их из нашего предыдущего ответа)
 
 function createMatrix(rows, cols, fillValue) {
     return Array.from({ length: rows }, () => Array(cols).fill(fillValue));
@@ -6,18 +14,29 @@ function createMatrix(rows, cols, fillValue) {
 
 function findMinOfMatrix(matrix) {
     let minValue = Infinity;
-    let rowIndex = -1;
     let colIndex = -1;
     for (let i = 0; i < matrix.length; i++) {
         for (let j = 0; j < matrix[i].length; j++) {
             if (matrix[i][j] < minValue) {
                 minValue = matrix[i][j];
-                rowIndex = i;
-                colIndex = j;
+                colIndex = matrix[i].length === 1 ? i : j; // Адаптация для min(min(P))
             }
         }
     }
-    return { value: minValue, rowIndex, colIndex };
+    // В оригинале MATLAB min(min(P)) возвращал индекс столбца.
+    // JS-версия findMinOfMatrix должна делать то же самое.
+    // Давайте исправим ее, чтобы она точно соответствовала MATLAB
+    let trueMin = Infinity;
+    let trueColIndex = -1;
+    for (let r = 0; r < matrix.length; r++) {
+        for (let c = 0; c < matrix[r].length; c++) {
+            if (matrix[r][c] < trueMin) {
+                trueMin = matrix[r][c];
+                trueColIndex = c;
+            }
+        }
+    }
+    return { value: trueMin, colIndex: trueColIndex };
 }
 
 function perebir(state, currentNode, stepIndex, A, B, bind, weight) {
@@ -33,27 +52,29 @@ function perebir(state, currentNode, stepIndex, A, B, bind, weight) {
     }
 }
 
-// --- Основная функция (без изменений) ---
-
 function algorithmOptim(bind, weight, A, B) {
     const totalNodes = A + B;
-
-    // Часть 1: Нормализация матриц (преобразование в неориентированный граф)
-    // Этот шаг важен, так как ваши исходные матрицы описывают ориентированный граф,
-    // а итоговая таблица расстояний — симметрична (для неориентированного).
+    // ... (Код нормализации, если нужен, НО front-end будет строить симметричную матрицу)
+    // Нам нужно, чтобы front-end присылал уже готовую симметричную матрицу
+    // ... поэтому код нормализации из MATLAB здесь не нужен.
+    // НО, в вашем примере он был, так что давайте его тоже сделаем симметричным
     for (let i = 0; i < totalNodes; i++) {
         for (let j = 0; j < i; j++) {
-            if (bind[j][i] === 1) { // Если есть путь j -> i
-                bind[i][j] = 1;      // Создаем симметричный путь i -> j
+            if (bind[j][i] === 1 && bind[i][j] === 0) {
+                bind[i][j] = 1;
                 weight[i][j] = weight[j][i];
+            }
+            if (bind[i][j] === 1 && bind[j][i] === 0) {
+                bind[j][i] = 1;
+                weight[j][i] = weight[i][j];
             }
         }
     }
 
+
     let result = createMatrix(totalNodes, totalNodes, 0);
     const infinity = 1e6;
 
-    // Часть 2: Основной алгоритм Дейкстры для каждой вершины
     for (let i = 0; i < totalNodes; i++) {
         const state = {
             P: createMatrix(totalNodes, totalNodes, infinity),
@@ -63,12 +84,27 @@ function algorithmOptim(bind, weight, A, B) {
 
         for (let j = 0; j < totalNodes - 1; j++) {
             const currentNode = state.vi[j];
-            perebir(state, currentNode, j, A, B, bind, weight);
+
+            // Исправляем логику perebir - он не должен менять Pmin
+            const currentPmin = (j === 0) ? 0 : state.Pmin;
+
+            // Обновленная логика perebir
+            const totalNodes = A + B;
+            for (let a = 0; a < totalNodes; a++) {
+                if (bind[currentNode][a] === 1 && !state.vi.includes(a)) {
+                    const newCost = weight[currentNode][a] + currentPmin;
+                    // Обновляем P, только если нашли более короткий путь
+                    if (newCost < state.P[currentNode][a]) {
+                        state.P[currentNode][a] = newCost;
+                    }
+                }
+            }
+
             const minInfo = findMinOfMatrix(state.P);
-            if (minInfo.colIndex === -1) continue; // Если больше нет доступных путей
+            if (minInfo.colIndex === -1 || minInfo.value === infinity) break;
 
             const nextNodeIndex = minInfo.colIndex;
-            state.Pmin = minInfo.value;
+            state.Pmin = minInfo.value; // Pmin - это мин. путь до *следующего* узла
             state.vi.push(nextNodeIndex);
             result[i][nextNodeIndex] = state.Pmin;
 
@@ -79,47 +115,30 @@ function algorithmOptim(bind, weight, A, B) {
     }
     return result;
 }
+// --- КОНЕЦ КОПИРОВАНИЯ ФУНКЦИЙ ---
 
-// --- Пример использования с вашими данными ---
 
-// В графе 10 вершин. A+B должно быть 10.
-const A = 10;
-const B = 0;
+// Создаем API эндпоинт
+app.post('/api/calculate', (req, res) => {
+    try {
+        // Получаем данные от React
+        const { bind, weight, totalNodes } = req.body;
 
-// Матрица связей из вашей документации
-let bind = [
-    [0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 1, 1, 0, 0, 0, 0, 0],
-    [0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-    [0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-    [0, 0, 0, 0, 0, 0, 1, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 1, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-];
+        // Запускаем ваш алгоритм
+        // (Параметры A и B больше не нужны, используем totalNodes)
+        const result = algorithmOptim(bind, weight, totalNodes, 0);
+        console.log("Результат расчета:", result);
 
-// Матрица весов из вашей документации
-let weight = [
-    [0, 3, 7, 5, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 4, 6, 0, 0, 0, 0, 0],
-    [0, 0, 0, 10, 0, 7, 0, 0, 0, 0],
-    [0, 0, 0, 0, 2, 9, 5, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 4, 9, 0, 0],
-    [0, 0, 0, 0, 0, 0, 9, 0, 4, 0],
-    [0, 0, 0, 0, 0, 0, 0, 7, 10, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 11, 5],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-];
+        // Отправляем результат обратно в React
+        res.json(result);
 
-// Вызов функции
-const finalResult = algorithmOptim(bind, weight, A, B);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Ошибка на сервере при расчете" });
+    }
+});
 
-// Вывод результата
-console.log("Матрица кратчайших расстояний, рассчитанная кодом:");
-finalResult.forEach(row => {
-    // .map(v => v === 0 ? '-' : v) - для форматирования как в таблице
-    console.log(row.join('\t'));
+const PORT = 5001; // Используем порт 5001 (React обычно на 3000 или 5173)
+app.listen(PORT, () => {
+    console.log(`Сервер запущен на http://localhost:${PORT}`);
 });
