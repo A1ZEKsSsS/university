@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const History = new Schema({
     user: {
         type: mongoose.Types.ObjectId,
-        ref: "customers",
+        ref: "user",
         required: true
     },
     name: {

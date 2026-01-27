@@ -1,177 +1,261 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { observer } from 'mobx-react-lite';
+import { useStore } from '../../store';
+import { useNavigate } from 'react-router-dom';
 // import './AuthPage.css';
 
 const AuthPage = ({ onLoginSuccess }) => {
-    const [method, setMethod] = useState('email'); // 'email' или 'phone'
     const [formData, setFormData] = useState({
         email: '',
-        phone: '',
         password: '',
         confirmPassword: '',
         code: ''
     });
-    const [error, setError] = useState('');
-    const [isCodeSent, setIsCodeSent] = useState(false); // Для имитации СМС
 
-    // Обработка ввода
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isResending, setIsResending] = useState(false);
+
+    const store = useStore();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        let interval = null;
+        if (timer > 0) {
+            interval = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+        } else {
+            clearInterval(interval);
+        }
+        return () => clearInterval(interval);
+    }, [timer]);
+
+    const switchMode = (mode) => {
+        setAuthMode(mode);
+        setIsCodeSent(false);
+        setError('');
+        setTimer(0);
+        setFormData(prev => ({ ...prev, password: '', confirmPassword: '', code: '' }));
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        setError(''); // Сброс ошибки при вводе
+        setError('');
     };
 
-    // Имитация отправки СМС
-    const handleSendCode = () => {
-        if (formData.phone.length < 10) {
-            setError('Введите корректный номер телефона');
-            return;
+    const handleResend = async () => {
+        if (timer > 0) return;
+
+        setIsResending(true);
+        setError('');
+        try {
+            if (authMode === 'register') {
+                // ШАГ 1: Повторный запрос кода
+                await axios.post('/api/auth/verify-email', {
+                    email: formData.email,
+                    password: formData.password
+                });
+            } else if (authMode === 'recovery') {
+                await axios.post('/api/auth/reset-password', {
+                    email: formData.email
+                });
+            }
+            setTimer(60);
+            alert('Код отправлен повторно');
+        } catch (e) {
+            console.error(e);
+            setError('Не удалось отправить код повторно');
+        } finally {
+            setIsResending(false);
         }
-        setIsCodeSent(true);
-        alert(`Код подтверждения отправлен на ${formData.phone}: 1234`); // Имитация
     };
 
-    // Обработка регистрации
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setIsLoading(true);
 
-        // Валидация для Email
-        if (method === 'email') {
-            if (!formData.email || !formData.password) {
-                setError('Заполните все поля');
-                return;
+        try {
+            if (!formData.email) throw new Error('Введите Email');
+
+            if (authMode === 'login') {
+                if (!formData.password) throw new Error('Введите пароль');
+                const response = await axios.post('/api/auth/signin', {
+                    email: formData.email,
+                    password: formData.password
+                });
+                store.auth.authorize(response.data.token);
+                navigate('/');
             }
-            if (!formData.email.includes('@')) {
-                setError('Некорректный Email');
-                return;
+
+            else if (authMode === 'register') {
+
+                if (!isCodeSent) {
+                    if (formData.password !== formData.confirmPassword) throw new Error('Пароли не совпадают');
+
+                    await axios.post('/api/auth/verify-email', {
+                        email: formData.email,
+                        password: formData.password
+                    });
+
+                    setIsCodeSent(true);
+                    setTimer(60);
+                }
+                else {
+                    if (!formData.code) throw new Error('Введите код');
+
+                    await axios.post('/api/auth/confirm-verify-email', {
+                        email: formData.email,
+                        code: formData.code
+                    });
+
+                    const response = await axios.post('/api/auth/signup', {
+                        email: formData.email,
+                        password: formData.password,
+                        code: formData.code
+                    });
+
+                    store.auth.authorize(response.data.token);
+                    navigate('/');
+                }
             }
-            if (formData.password !== formData.confirmPassword) {
-                setError('Пароли не совпадают');
-                return;
+
+            else if (authMode === 'recovery') {
+                if (!isCodeSent) {
+                    await axios.post('/api/auth/reset-password', {
+                        email: formData.email
+                    });
+                    setIsCodeSent(true);
+                    setTimer(60);
+                } else {
+                    if (formData.password !== formData.confirmPassword) throw new Error('Пароли не совпадают');
+
+                    const response = await axios.post('/api/auth/reset-password-confirm', {
+                        email: formData.email,
+                        code: formData.code,
+                        password: formData.password
+                    });
+
+                    if (response.data.token) {
+                        store.auth.authorize(response.data.token);
+                        navigate('/');
+                    } else {
+                        switchMode('login');
+                        alert('Пароль изменен. Войдите в аккаунт.');
+                    }
+                }
             }
+
+        } catch (e) {
+            console.error(e);
+            const msg = e.response?.data?.message || e.message || 'Произошла ошибка';
+            setError(msg);
+        } finally {
+            setIsLoading(false);
         }
+    };
 
-        // Валидация для Телефона
-        if (method === 'phone') {
-            if (!isCodeSent) {
-                handleSendCode();
-                return;
-            }
-            if (formData.code !== '1234') { // Хардкод проверка
-                setError('Неверный код из СМС');
-                return;
-            }
-        }
-
-        // Если всё ок
-        onLoginSuccess();
+    const getTitle = () => {
+        if (authMode === 'login') return 'Вход';
+        if (authMode === 'register') return isCodeSent ? 'Подтверждение регистрации' : 'Регистрация';
+        if (authMode === 'recovery') return isCodeSent ? 'Смена пароля' : 'Восстановление';
     };
 
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <h2 className="auth-title">Регистрация</h2>
+                <div className="auth-header">
+                    <h2 className="auth-title">{getTitle()}</h2>
 
-                {/* Вкладки */}
-                <div className="auth-tabs">
-                    <button
-                        className={`tab-btn ${method === 'email' ? 'active' : ''}`}
-                        onClick={() => { setMethod('email'); setError(''); }}
-                    >
-                        Email
-                    </button>
-                    <button
-                        className={`tab-btn ${method === 'phone' ? 'active' : ''}`}
-                        onClick={() => { setMethod('phone'); setError(''); }}
-                    >
-                        Телефон
-                    </button>
+                    {(authMode !== 'recovery' && !isCodeSent) && (
+                        <div className="auth-tabs">
+                            <button className={`tab-btn ${authMode === 'login' ? 'active' : ''}`} onClick={() => switchMode('login')}>Вход</button>
+                            <button className={`tab-btn ${authMode === 'register' ? 'active' : ''}`} onClick={() => switchMode('register')}>Регистрация</button>
+                        </div>
+                    )}
                 </div>
 
                 {error && <div className="error-msg">{error}</div>}
 
                 <form className="auth-form" onSubmit={handleSubmit}>
 
-                    {/* Поля для EMAIL */}
-                    {method === 'email' && (
-                        <>
-                            <div className="form-group">
-                                <label>Email адрес</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    className="form-input"
-                                    placeholder="name@example.com"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Пароль</label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    className="form-input"
-                                    placeholder="******"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Повторите пароль</label>
-                                <input
-                                    type="password"
-                                    name="confirmPassword"
-                                    className="form-input"
-                                    placeholder="******"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                />
-                            </div>
-                        </>
+                    {/* EMAIL */}
+                    <div className="form-group">
+                        <label>Email адрес</label>
+                        <input type="email" name="email" className="form-input" placeholder="name@example.com" value={formData.email} onChange={handleChange} disabled={isCodeSent} />
+                    </div>
+
+                    {/* ПАРОЛИ (в зависимости от режима) */}
+                    {(authMode === 'login' || (authMode === 'register' && !isCodeSent)) && (
+                        <div className="form-group">
+                            <label>Пароль</label>
+                            <input type="password" name="password" className="form-input" placeholder="******" value={formData.password} onChange={handleChange} />
+                        </div>
                     )}
 
-                    {/* Поля для ТЕЛЕФОНА */}
-                    {method === 'phone' && (
-                        <>
-                            <div className="form-group">
-                                <label>Номер телефона</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    className="form-input"
-                                    placeholder="+380..."
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    disabled={isCodeSent}
-                                />
-                            </div>
+                    {((authMode === 'register' && !isCodeSent) || (authMode === 'recovery' && isCodeSent)) && (
+                        <div className="form-group">
+                            <label>{authMode === 'recovery' ? 'Новый пароль' : 'Повторите пароль'}</label>
+                            <input type="password" name="confirmPassword" className="form-input" placeholder="******" value={formData.confirmPassword} onChange={handleChange} />
+                        </div>
+                    )}
 
-                            {isCodeSent && (
+                    {authMode === 'login' && (
+                        <div className="forgot-pass-wrapper">
+                            <span className="link-forgot" onClick={() => switchMode('recovery')}>Забыли пароль?</span>
+                        </div>
+                    )}
+
+                    {/* CODE INPUT */}
+                    {isCodeSent && (
+                        <div className="fade-in">
+                            {authMode === 'recovery' && (
                                 <div className="form-group">
-                                    <label>Код из СМС (1234)</label>
-                                    <input
-                                        type="text"
-                                        name="code"
-                                        className="form-input"
-                                        placeholder="1234"
-                                        value={formData.code}
-                                        onChange={handleChange}
-                                    />
+                                    <label>Новый пароль</label>
+                                    <input type="password" name="password" className="form-input" placeholder="New pass" value={formData.password} onChange={handleChange} />
                                 </div>
                             )}
-                        </>
+
+                            <div className="info-text">Код отправлен на {formData.email}</div>
+
+                            <div className="form-group">
+                                <label>Код из письма</label>
+                                <input type="text" name="code" className="form-input code-input" placeholder="1234" value={formData.code} onChange={handleChange} autoFocus />
+                            </div>
+
+                            <div className="resend-wrapper">
+                                {timer > 0 ? (
+                                    <span className="resend-timer">Отправить повторно через {timer}с</span>
+                                ) : (
+                                    <span className={`resend-link ${isResending ? 'disabled' : ''}`} onClick={handleResend}>
+                                        {isResending ? 'Отправка...' : 'Отправить код повторно'}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="link-back" onClick={() => setIsCodeSent(false)}>← Изменить Email</div>
+                        </div>
                     )}
 
-                    <button type="submit" className="submit-btn">
-                        {method === 'phone' && !isCodeSent ? 'Получить код' : 'Зарегистрироваться'}
+                    <button type="submit" className="submit-btn" disabled={isLoading}>
+                        {isLoading ? 'Загрузка...' : (
+                            authMode === 'login' ? 'Войти' :
+                                authMode === 'register' ? (isCodeSent ? 'Подтвердить и создать' : 'Далее') :
+                                    (isCodeSent ? 'Сменить пароль' : 'Отправить код')
+                        )}
                     </button>
-                </form>
 
-                <div className="secondary-action">
-                    Уже есть аккаунт? <span className="link" onClick={onLoginSuccess}>Войти</span>
-                </div>
+                    {(authMode === 'recovery' && !isCodeSent) && (
+                        <div className="secondary-action">
+                            <span className="link" onClick={() => switchMode('login')}>Вернуться ко входу</span>
+                        </div>
+                    )}
+                </form>
             </div>
         </div>
     );
 };
 
-export default AuthPage;
+export default observer(AuthPage);

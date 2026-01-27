@@ -14,7 +14,7 @@ const initialNodes = [
     { id: '1', type: 'default', data: { label: 'Точка 1' }, position: { x: 100, y: 100 } },
 ];
 
-export default function CalculatorPage() {
+const CalculatorContent = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -32,7 +32,7 @@ export default function CalculatorPage() {
             const { bind, weight, totalNodes } = generateMatrices(edges);
 
             // 2. Отправляем запрос
-            const response = await fetch('http://localhost:5001/api/calculate', {
+            const response = await fetch('http://localhost:5001/api/calculate/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ bind, weight, totalNodes }),
@@ -78,3 +78,14 @@ export default function CalculatorPage() {
         </ReactFlowProvider>
     );
 }
+
+
+const CalculatorPage = () => {
+    return (
+        <ReactFlowProvider>
+            <CalculatorContent />
+        </ReactFlowProvider>
+    );
+};
+
+export default CalculatorPage;

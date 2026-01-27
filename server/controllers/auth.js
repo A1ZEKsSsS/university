@@ -1,9 +1,21 @@
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import { capitalize } from "../utils/helpers.js";
+import User from "../models/user.js";
+import {
+    sendVerifyMail,
+    sendWelcomeEmail,
+    sendAlreadyRegisteredEmail,
+    sendResetMail,
+    sendSignInEmail,
+} from "../services/mailer/index.js";
+import Cache from "../services/cache.js";
+
 const generateToken = (user, type) => {
     return jwt.sign(
         {
             id: user._id,
             email: user.email,
-            // phone: user.phone,
             type,
         },
         process.env.JWT_SECRET
@@ -33,7 +45,7 @@ const signIn = async (req, res) => {
             .send({ error: "Auth is allowed only through Google for you" });
     }
 
-    const isValidPass = await bcrypt.compare(req.body.password, user.password);
+    const isValidPass = await bcrypt.compare(password, user.password);
     if (!isValidPass) {
         return res.status(400).send({ error: "Invalid password" });
     }
@@ -48,10 +60,10 @@ const signIn = async (req, res) => {
 
 
 const signInEmailCode = async (req, res) => {
-    const { email, dob } = req.body;
+    const { email } = req.body;
     const type = req.params.type;
 
-    const user = await Model.findOne({ email }).lean();
+    const user = await User.findOne({ email }).lean();
 
     if (!user) {
         return res.status(400).send({ error: `${capitalize(type)} not found` });
@@ -116,7 +128,7 @@ const signUpVerifyEnter = async (req, res) => {
 
 const signUp = async (req, res) => {
     const { type } = req.params;
-    const { name, email, password, phone, isPhoneVerified } =
+    const { email, password } =
         req.body;
 
     const user_exists = await User.exists({ email });
@@ -131,11 +143,8 @@ const signUp = async (req, res) => {
     const password_hash = await bcrypt.hash(password, salt)
 
     const data = {
-        name,
         email,
         password: password_hash,
-        phone,
-        isPhoneVerified,
     };
 
     const user = await User.create(data);
@@ -173,7 +182,6 @@ const resetPasswordStart = async (req, res) => {
         return res.status(404).send({ error: `${capitalize(type)} not found` });
     }
 
-    logContext.userId = user._id;
 
     if (user && !user.password) {
 
@@ -192,7 +200,6 @@ const resetPasswordStart = async (req, res) => {
 
 const resetPasswordConfirm = async (req, res) => {
     const { email, code, password } = req.body;
-
     const saved = Cache.get(`reset-${email}`);
 
     if (!saved) {
@@ -200,8 +207,6 @@ const resetPasswordConfirm = async (req, res) => {
             .status(426)
             .send({ error: "Verification code is expired. Try again" });
     }
-
-    logContext.userType = saved.type;
 
     if (saved.code != code) {
 
@@ -233,7 +238,7 @@ const userInfo = async (req, res) => {
 
     const user = await User.findOne(
         { _id: id },
-        "name email phone"
+        "name email"
     ).lean();
 
     if (!user) {
@@ -245,4 +250,17 @@ const userInfo = async (req, res) => {
         type,
     };
     res.send(response);
+};
+
+export default {
+    signIn,
+    signInEmailCode,
+    confirmSignInEmail,
+    signUpVerifySend,
+    signUpVerifyEnter,
+    signUp,
+    signUpValidate,
+    resetPasswordStart,
+    resetPasswordConfirm,
+    userInfo,
 };

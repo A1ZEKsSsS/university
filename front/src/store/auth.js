@@ -1,3 +1,6 @@
+import { makeAutoObservable } from "mobx";
+import axios from "axios";
+
 class Auth {
     isAuth = false;
     token = null;
@@ -6,7 +9,6 @@ class Auth {
         id: '',
         name: '',
         email: '',
-        phone: ''
     };
 
     constructor() {
@@ -25,7 +27,6 @@ class Auth {
                 id: data.id,
                 name: data.name,
                 email: data.email,
-                phone: data.phone
             };
         } catch (e) {
             if (e.response?.status === 401) {
