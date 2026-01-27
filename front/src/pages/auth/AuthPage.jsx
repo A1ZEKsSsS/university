@@ -13,6 +13,9 @@ const AuthPage = ({ onLoginSuccess }) => {
         code: ''
     });
 
+    const [authMode, setAuthMode] = useState('login'); // 'login' | 'register' | 'recovery'
+    const [isCodeSent, setIsCodeSent] = useState(false);
+    const [timer, setTimer] = useState(0);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);

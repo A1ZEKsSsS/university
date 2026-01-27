@@ -1,36 +1,68 @@
 // src/components/Sidebar.jsx
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store';
+import { observer } from 'mobx-react-lite';
 
 const Sidebar = ({ onCalculate, error, isLoading }) => {
+    const navigate = useNavigate();
+    const { auth } = useStore();
+
+    const [isOpen, setIsOpen] = useState(true);
+
+    const handleLogout = () => {
+        if (auth.logout) auth.logout();
+        navigate('/login');
+    };
+
     return (
-        <div className="sidebar" style={{ width: '250px', padding: '20px', background: '#f5f5f5' }}>
-            <h2>Управление</h2>
-            <p style={{ fontSize: '14px', color: '#555' }}>
-                Двойной клик по полю: добавить точку. <br />
-                Протянуть линию: создать связь.
-            </p>
+        <div className={`sidebar ${!isOpen ? 'closed' : ''}`}>
 
             <button
-                onClick={onCalculate}
-                disabled={isLoading}
-                style={{
-                    padding: '10px 20px',
-                    fontSize: '16px',
-                    cursor: 'pointer',
-                    marginTop: '10px',
-                    width: '100%'
-                }}
+                className="sidebar-toggle"
+                onClick={() => setIsOpen(!isOpen)}
+                title={isOpen ? "Свернуть" : "Развернуть"}
             >
-                {isLoading ? 'Считаем...' : 'Рассчитать'}
+                {isOpen ? '◀' : '▶'}
             </button>
 
-            {error && (
-                <div style={{ color: 'red', marginTop: '15px', border: '1px solid red', padding: '10px', borderRadius: '4px' }}>
-                    {error}
-                </div>
-            )}
+            <div className="sidebar-content">
+
+                <h2 className="sidebar-title">Управление</h2>
+
+                <button className="btn history-btn" onClick={() => navigate('/history')}>
+                    📜 История
+                </button>
+
+                <p className="description">
+                    Двойной клик: добавить точку. <br />
+                    Протянуть: создать связь.
+                </p>
+
+                <button
+                    className="btn calc-btn"
+                    onClick={onCalculate}
+                    disabled={isLoading}
+                >
+                    {isLoading ? '...' : 'Рассчитать'}
+                </button>
+
+                {error && (
+                    <div className="error-box">
+                        {error}
+                    </div>
+                )}
+
+                <div className="spacer"></div>
+
+                <hr className="divider" />
+
+                <button className="btn logout-btn" onClick={handleLogout}>
+                    Выйти
+                </button>
+            </div>
         </div>
     );
 };
 
-export default Sidebar;
+export default observer(Sidebar);
