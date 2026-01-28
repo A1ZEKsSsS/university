@@ -1,4 +1,3 @@
-// src/utils/matrixHelpers.js
 
 export const generateMatrices = (edges) => {
     if (edges.length === 0) {
@@ -13,7 +12,6 @@ export const generateMatrices = (edges) => {
 
     const totalNodes = Math.max(...Array.from(nodeIndices));
 
-    // Создаем пустые матрицы
     let bind = Array.from({ length: totalNodes }, () => Array(totalNodes).fill(0));
     let weight = Array.from({ length: totalNodes }, () => Array(totalNodes).fill(0));
 
@@ -26,7 +24,6 @@ export const generateMatrices = (edges) => {
         const j = toNode - 1;
 
         if (i >= 0 && j >= 0) {
-            // Симметричное заполнение
             bind[i][j] = 1;
             weight[i][j] = edgeWeight;
             bind[j][i] = 1;

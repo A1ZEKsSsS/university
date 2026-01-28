@@ -19,7 +19,6 @@ function findMinOfMatrix(matrix) {
 function algorithmOptim(bind, weight, A, B) {
     const totalNodes = A + B;
 
-    // Нормализация (симметричность)
     for (let i = 0; i < totalNodes; i++) {
         for (let j = 0; j < i; j++) {
             if (bind[j][i] === 1 && bind[i][j] === 0) {
@@ -47,7 +46,6 @@ function algorithmOptim(bind, weight, A, B) {
             const currentNode = state.vi[j];
             const currentPmin = (j === 0) ? 0 : state.Pmin;
 
-            // Логика перебора соседей
             for (let a = 0; a < totalNodes; a++) {
                 if (bind[currentNode][a] === 1 && !state.vi.includes(a)) {
                     const newCost = weight[currentNode][a] + currentPmin;

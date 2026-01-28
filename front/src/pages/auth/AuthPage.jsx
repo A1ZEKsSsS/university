@@ -3,7 +3,6 @@ import axios from 'axios';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../../store';
 import { useNavigate } from 'react-router-dom';
-// import './AuthPage.css';
 
 const AuthPage = ({ onLoginSuccess }) => {
     const [formData, setFormData] = useState({
@@ -55,7 +54,6 @@ const AuthPage = ({ onLoginSuccess }) => {
         setError('');
         try {
             if (authMode === 'register') {
-                // ШАГ 1: Повторный запрос кода
                 await axios.post('/api/auth/verify-email', {
                     email: formData.email,
                     password: formData.password
@@ -184,13 +182,11 @@ const AuthPage = ({ onLoginSuccess }) => {
 
                 <form className="auth-form" onSubmit={handleSubmit}>
 
-                    {/* EMAIL */}
                     <div className="form-group">
                         <label>Email адрес</label>
                         <input type="email" name="email" className="form-input" placeholder="name@example.com" value={formData.email} onChange={handleChange} disabled={isCodeSent} />
                     </div>
 
-                    {/* ПАРОЛИ (в зависимости от режима) */}
                     {(authMode === 'login' || (authMode === 'register' && !isCodeSent)) && (
                         <div className="form-group">
                             <label>Пароль</label>
@@ -211,7 +207,6 @@ const AuthPage = ({ onLoginSuccess }) => {
                         </div>
                     )}
 
-                    {/* CODE INPUT */}
                     {isCodeSent && (
                         <div className="fade-in">
                             {authMode === 'recovery' && (

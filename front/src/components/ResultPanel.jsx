@@ -1,4 +1,3 @@
-// src/components/ResultPanel.jsx
 import React from 'react';
 
 const ResultPanel = ({ result }) => {

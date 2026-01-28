@@ -1,4 +1,3 @@
-// src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
@@ -11,7 +10,7 @@ const Sidebar = ({ onCalculate, error, isLoading }) => {
     const [isOpen, setIsOpen] = useState(true);
 
     const handleLogout = () => {
-        if (auth.logout) auth.logout();
+        if (auth.unauthorize) auth.unauthorize();
         navigate('/login');
     };
 
