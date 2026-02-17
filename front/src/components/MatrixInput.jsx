@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+// import './MatrixInput.css';
 
 const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
+    // Состояние переключателя: 'table' (Твой вариант) или 'cards' (Для телефона)
+    const [viewType, setViewType] = useState('table');
 
     const findEdge = (source, target) => {
         return edges.find(e => e.source === source && e.target === target);
@@ -17,7 +20,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         const newNode = {
             id: newId,
             type: 'default',
-            data: { label: `T-${newId}` }, // Сократил название для компактности
+            data: { label: `T-${newId}` },
             position: { x: 100 + (nodes.length * 50), y: 100 + (nodes.length * 50) },
         };
         setNodes((nds) => [...nds, newNode]);
@@ -29,159 +32,246 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
     };
 
-    const handleBindChange = (source, target, isChecked) => {
-        if (isChecked) {
+    // ТВОЯ ФУНКЦИЯ (Без изменений)
+    const handleBindChange = (source, target, currentEdge) => {
+        let nextType = 0;
+        let currentType = 0;
+
+        if (currentEdge) {
+            currentType = currentEdge.data?.directionCode || 1;
+        }
+
+        if (currentType === 0) nextType = 1;
+        else if (currentType === 1) nextType = 3;
+        else if (currentType === 3) nextType = 2;
+        else if (currentType === 2) nextType = 0;
+
+        setEdges((eds) => {
+            const filtered = eds.filter(e => !(e.source === source && e.target === target));
+            if (nextType === 0) return filtered;
+
+            const isBiDir = nextType === 1;
+            const isForward = nextType === 3;
+            const isReverse = nextType === 2;
+
             const newEdge = {
                 id: `e${source}-${target}`,
                 source,
                 target,
-                label: '1',
-                type: 'smoothstep',
-                markerEnd: { type: 'arrowclosed' },
+                label: currentEdge?.label || '1',
+                // type: 'smoothstep',
+                type: 'smart',
+                pathOptions: { borderRadius: 20 }, // Добавил для красоты линий
+                data: {
+                    weight: currentEdge?.data?.weight || 1,
+                    directionCode: nextType
+                },
+                markerEnd: (isBiDir || isForward) ? { type: 'arrowclosed' } : undefined,
+                markerStart: (isBiDir || isReverse) ? { type: 'arrowclosed' } : undefined,
             };
-            setEdges((eds) => [...eds, newEdge]);
-        } else {
-            setEdges((eds) => eds.filter(e => !(e.source === source && e.target === target)));
-        }
+
+            return [...filtered, newEdge];
+        });
     };
 
+    // ТВОЯ ФУНКЦИЯ (Без изменений)
     const handleWeightChange = (source, target, value) => {
-        if (value === '') return;
+        // Разрешаем пустую строку для стирания, но не сохраняем её как NaN
+        if (value === '') {
+            // Можно просто обновить label на пустоту, но не трогать вес пока
+        }
 
         setEdges((eds) => {
             const edgeExists = eds.find(e => e.source === source && e.target === target);
-            const numValue = parseInt(value, 10); // Преобразуем строку в число
+            const numValue = value === '' ? 0 : parseInt(value, 10);
 
             if (edgeExists) {
                 return eds.map(e => {
                     if (e.source === source && e.target === target) {
                         return {
                             ...e,
-                            label: value.toString(), // Для отображения на графе
-                            data: { ...e.data, weight: numValue } // <--- ВАЖНО: Для логики расчетов
+                            label: value.toString(),
+                            data: { ...e.data, weight: numValue }
                         };
                     }
                     return e;
                 });
-            } else {
-                return [...eds, {
-                    id: `e${source}-${target}`,
-                    source,
-                    target,
-                    label: value.toString(),
-                    type: 'smoothstep',
-                    markerEnd: { type: 'arrowclosed' },
-                    data: { weight: numValue } // <--- ВАЖНО: Создаем с данными
-                }];
             }
+            // Если ребра нет, мы его не создаем через input веса (только через кнопку типа)
+            return eds;
         });
+    };
+
+    // Хелпер для иконок кнопок
+    const getBtnLabel = (edge) => {
+        if (!edge) return <span style={{ opacity: 0.3 }}>•</span>;
+        const code = edge.data?.directionCode;
+        if (code === 1) return '↔';
+        if (code === 3) return '→';
+        if (code === 2) return '←';
+        return '↔'; // fallback
     };
 
     return (
         <div className="matrix-container">
+            {/* === ШАПКА С ПЕРЕКЛЮЧАТЕЛЕМ === */}
+            <div className="matrix-header-row">
+                <div className="view-switcher">
+                    <button
+                        className={`switch-btn ${viewType === 'table' ? 'active' : ''}`}
+                        onClick={() => setViewType('table')}
+                    >
+                        Таблицы
+                    </button>
+                    <button
+                        className={`switch-btn ${viewType === 'cards' ? 'active' : ''}`}
+                        onClick={() => setViewType('cards')}
+                    >
+                        Карточки
+                    </button>
+                </div>
 
-            <div className="matrix-controls">
-                <h3>Редактор матриц</h3>
                 <button className="matrix-add-btn" onClick={handleAddNode}>
-                    + Добавить точку
+                    + Точка
                 </button>
             </div>
 
-            <div className="tables-wrapper">
-
-                {/* === Таблица 1: Матрица Связей === */}
-                <div className="matrix-card">
-                    <h4>Связи (Топология)</h4>
-                    <div className="table-scroll-area">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    {nodes.map(n => (
-                                        <th key={n.id}>
-                                            {n.data.label}
-                                            <button
-                                                className="remove-node-btn"
-                                                onClick={() => handleRemoveNode(n.id)}
-                                                title="Удалить точку"
-                                            >&times;</button>
-                                        </th>
+            {/* === ВАРИАНТ 1: ТВОИ ТАБЛИЦЫ (LEGACY) === */}
+            {viewType === 'table' && (
+                <div className="tables-wrapper">
+                    {/* Таблица 1: Топология */}
+                    <div className="matrix-card">
+                        <h4>Связи</h4>
+                        <div className="table-scroll-area">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        {nodes.map(n => (
+                                            <th key={n.id}>
+                                                {n.data.label}
+                                                <button className="remove-node-btn" onClick={() => handleRemoveNode(n.id)}>&times;</button>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {nodes.map(source => (
+                                        <tr key={source.id}>
+                                            <th>{source.data.label}</th>
+                                            {nodes.map(target => {
+                                                const isSelf = source.id === target.id;
+                                                const edge = findEdge(source.id, target.id);
+                                                return (
+                                                    <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''}>
+                                                        {!isSelf && (
+                                                            <button
+                                                                onClick={() => handleBindChange(source.id, target.id, edge)}
+                                                                className="topology-btn"
+                                                            >
+                                                                {getBtnLabel(edge)}
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
                                     ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {nodes.map(source => (
-                                    <tr key={source.id}>
-                                        <th>{source.data.label}</th>
-                                        {nodes.map(target => {
-                                            const isSelf = source.id === target.id;
-                                            const edge = findEdge(source.id, target.id);
-                                            return (
-                                                <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''}>
-                                                    {!isSelf && (
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={!!edge}
-                                                            onChange={(e) => handleBindChange(source.id, target.id, e.target.checked)}
-                                                        />
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Таблица 2: Веса */}
+                    <div className="matrix-card">
+                        <h4>Веса</h4>
+                        <div className="table-scroll-area">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        {nodes.map(n => <th key={n.id}>{n.data.label}</th>)}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {nodes.map(source => (
+                                        <tr key={source.id}>
+                                            <th>{source.data.label}</th>
+                                            {nodes.map(target => {
+                                                const isSelf = source.id === target.id;
+                                                const edge = findEdge(source.id, target.id);
+                                                const isDisabled = !edge || isSelf;
+
+                                                return (
+                                                    <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''}>
+                                                        {!isSelf && (
+                                                            <input
+                                                                type="number"
+                                                                className="weight-input-table"
+                                                                value={edge ? (edge.label || '') : ''}
+                                                                disabled={!edge}
+                                                                onChange={(e) => handleWeightChange(source.id, target.id, e.target.value)}
+                                                                placeholder={edge ? "0" : ""}
+                                                            />
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+            )}
 
-                {/* === Таблица 2: Матрица Весов === */}
-                <div className="matrix-card">
-                    <h4>Веса (Стоимость)</h4>
-                    <div className="table-scroll-area">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    {nodes.map(n => <th key={n.id}>{n.data.label}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {nodes.map(source => (
-                                    <tr key={source.id}>
-                                        <th>{source.data.label}</th>
-                                        {nodes.map(target => {
-                                            const isSelf = source.id === target.id;
-                                            const edge = findEdge(source.id, target.id);
-                                            const isDisabled = !edge || isSelf;
+            {/* === ВАРИАНТ 2: КАРТОЧКИ (ДЛЯ ТЕЛЕФОНА) === */}
+            {viewType === 'cards' && (
+                <div className="cards-grid">
+                    {nodes.map(source => (
+                        <div key={source.id} className="mobile-card">
+                            <div className="mobile-card-header">
+                                <span>От: <b>{source.data.label}</b></span>
+                                <button className="remove-node-btn" onClick={() => handleRemoveNode(source.id)}>&times;</button>
+                            </div>
 
-                                            return (
-                                                <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''} style={{ background: isDisabled && !isSelf ? '#fdfdfd' : '' }}>
-                                                    {!isSelf && (
-                                                        <input
-                                                            type="number"
-                                                            value={edge ? (edge.label || '') : ''}
-                                                            disabled={!edge}
-                                                            onChange={(e) => handleWeightChange(source.id, target.id, e.target.value)}
-                                                            placeholder={edge ? "0" : ""}
-                                                            style={{ opacity: isDisabled ? 0.3 : 1 }}
-                                                        />
-                                                    )}
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            <div className="mobile-connections">
+                                {nodes.filter(n => n.id !== source.id).map(target => {
+                                    const edge = findEdge(source.id, target.id);
+                                    const isActive = !!edge;
+
+                                    return (
+                                        <div key={target.id} className={`mobile-row ${isActive ? 'active' : ''}`}>
+                                            <span className="target-label">к {target.data.label}</span>
+
+                                            <div className="mobile-controls">
+                                                {/* Кнопка типа связи (та же логика) */}
+                                                <button
+                                                    onClick={() => handleBindChange(source.id, target.id, edge)}
+                                                    className={`topology-btn mobile ${isActive ? 'active' : ''}`}
+                                                >
+                                                    {getBtnLabel(edge)}
+                                                </button>
+
+                                                {/* Инпут веса (та же логика) */}
+                                                <input
+                                                    type="number"
+                                                    className="weight-input-mobile"
+                                                    disabled={!isActive}
+                                                    value={edge ? (edge.label || '') : ''}
+                                                    onChange={(e) => handleWeightChange(source.id, target.id, e.target.value)}
+                                                    placeholder="Вес"
+                                                />
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </div>
-
-            </div>
-
-            <p style={{ color: '#868e96', fontSize: '0.85em', marginTop: '10px' }}>
-                * Совет: Используйте <b>Shift + Колесико мыши</b> для горизонтальной прокрутки, если таблица не влазит.
-            </p>
+            )}
         </div>
     );
 };
