@@ -34,6 +34,10 @@ const CalculatorContent = () => {
 
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Состояние для меню смены направления
+    const [edgeMenu, setEdgeMenu] = useState(null);
+
     const ARROW_CONFIG = {
         type: 'arrowclosed',
         width: 20,
@@ -154,14 +158,57 @@ const CalculatorContent = () => {
     const handleEdgeClick = (event, edge) => {
         event.stopPropagation();
 
+        // Показываем меню выбора направления
+        setEdgeMenu({
+            edgeId: edge.id,
+            x: event.clientX,
+            y: event.clientY
+        });
+
+        // Показываем синий кружок
         setEdges((eds) => eds.map((e) => {
-            // Сбрасываем zIndex для остальных линий
+            if (e.id !== edge.id) return { ...e, selected: false, zIndex: 0 };
+            return { ...e, selected: true, zIndex: 100, type: 'bendable' };
+        }));
+    };
+
+    const handleDirectionChange = (directionCode) => {
+        if (!edgeMenu) return;
+
+        const isBiDir = directionCode === 1;
+        const isForward = directionCode === 3;
+        const isReverse = directionCode === 2;
+
+        setEdges((eds) => eds.map((e) => {
+            if (e.id !== edgeMenu.edgeId) return e;
+            return {
+                ...e,
+                data: { ...e.data, directionCode },
+                markerEnd: (isBiDir || isForward) ? ARROW_CONFIG : undefined,
+                markerStart: (isBiDir || isReverse) ? ARROW_CONFIG : undefined,
+            };
+        }));
+
+        setEdgeMenu(null);
+    };
+
+    const handleDeleteEdge = () => {
+        if (!edgeMenu) return;
+        setEdges((eds) => eds.filter((e) => e.id !== edgeMenu.edgeId));
+        setEdgeMenu(null);
+    };
+
+    // БЫЛО: const handleEdgeClick = (event, edge) => { ... }
+    // СТАЛО:
+    const handleEdgeDoubleClick = (event, edge) => {
+        event.stopPropagation();
+
+        setEdges((eds) => eds.map((e) => {
             if (e.id !== edge.id) return { ...e, zIndex: 0 };
 
-            // 1. Логика смены направления
+            // Логика смены направления (остается вашей)
             const currentDir = e.data?.directionCode || 1;
             let nextDir = 1;
-
             if (currentDir === 1) nextDir = 3;
             else if (currentDir === 3) nextDir = 2;
             else if (currentDir === 2) nextDir = 1;
@@ -172,31 +219,16 @@ const CalculatorContent = () => {
 
             return {
                 ...e,
-                // Обновляем ID для перерисовки стрелок
                 id: `e${e.source}-${e.target}-${Date.now()}`,
-
-                // Поднимаем наверх, чтобы стрелки были видны поверх других линий,
-                // но НЕ делаем линию жирной
                 zIndex: 100,
-
-                type: 'smoothstep',
-                pathOptions: { borderRadius: 20 },
-
-                selected: false, // Важно: убирает стандартное синее выделение
+                // selected: false, <-- ЭТУ СТРОКУ МОЖНО УДАЛИТЬ ИЛИ ОСТАВИТЬ, при двойном клике уже не так важно
                 data: {
                     ...e.data,
                     directionCode: nextDir
                 },
-
                 markerEnd: (isBiDir || isForward) ? ARROW_CONFIG : undefined,
                 markerStart: (isBiDir || isReverse) ? ARROW_CONFIG : undefined,
-
-                // === ИСПРАВЛЕНИЕ ===
-                style: {
-                    strokeWidth: 2, // Было 3, вернули 2 (стандартная толщина)
-                    stroke: '#b1b1b7', // Вернули серый цвет (было #555)
-                    cursor: 'pointer'
-                }
+                style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' }
             };
         }));
     };
@@ -224,6 +256,8 @@ const CalculatorContent = () => {
             setHighlightedPaths([]);
         }
     };
+
+
 
     return (
         <div className='calculator-page'>
@@ -275,6 +309,7 @@ const CalculatorContent = () => {
                             onNodesChange={onNodesChange}
                             onEdgesChange={onEdgesChange}
                             onEdgeClick={handleEdgeClick}
+                            onEdgeDoubleClick={handleEdgeDoubleClick}
                         />
 
                         {/* Легенда, если путей больше одного */}
@@ -297,6 +332,101 @@ const CalculatorContent = () => {
                                         Вариант {idx + 1}
                                     </div>
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Меню выбора направления */}
+                        {edgeMenu && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    left: edgeMenu.x,
+                                    top: edgeMenu.y,
+                                    background: 'white',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
+                                    zIndex: 2000,
+                                    minWidth: '150px'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    onClick={() => handleDirectionChange(1)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '10px 15px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        borderBottom: '1px solid #eee',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    ↔️ Двусторонняя
+                                </button>
+                                <button
+                                    onClick={() => handleDirectionChange(3)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '10px 15px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        borderBottom: '1px solid #eee',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    → Вперед
+                                </button>
+                                <button
+                                    onClick={() => handleDirectionChange(2)}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '10px 15px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        borderBottom: '1px solid #eee',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    ← Назад
+                                </button>
+                                <button
+                                    onClick={handleDeleteEdge}
+                                    style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        padding: '10px 15px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        color: '#d32f2f',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.background = '#ffebee'}
+                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                >
+                                    🗑️ Удалить
+                                </button>
                             </div>
                         )}
                     </div>

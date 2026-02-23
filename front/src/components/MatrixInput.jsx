@@ -32,42 +32,65 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
     };
 
+    const ARROW_CONFIG = {
+        type: 'arrowclosed',
+        width: 20,
+        height: 20,
+        color: '#b1b1b7', // Цвет как на графе
+    };
+
     // ТВОЯ ФУНКЦИЯ (Без изменений)
     const handleBindChange = (source, target, currentEdge) => {
-        let nextType = 0;
-        let currentType = 0;
-
+        // Логика: 0 (нет) -> 1 (<->) -> 3 (->) -> 2 (<-) -> 0
+        let currentDir = 0;
         if (currentEdge) {
-            currentType = currentEdge.data?.directionCode || 1;
+            currentDir = currentEdge.data?.directionCode || 1;
         }
 
-        if (currentType === 0) nextType = 1;
-        else if (currentType === 1) nextType = 3;
-        else if (currentType === 3) nextType = 2;
-        else if (currentType === 2) nextType = 0;
+        let nextDir = 0;
+        if (currentDir === 0) nextDir = 1;
+        else if (currentDir === 1) nextDir = 3;
+        else if (currentDir === 3) nextDir = 2;
+        else if (currentDir === 2) nextDir = 0;
 
         setEdges((eds) => {
+            // 1. Удаляем старую связь
             const filtered = eds.filter(e => !(e.source === source && e.target === target));
-            if (nextType === 0) return filtered;
 
-            const isBiDir = nextType === 1;
-            const isForward = nextType === 3;
-            const isReverse = nextType === 2;
+            // Если удаляем связь (nextDir === 0), просто возвращаем список без неё
+            if (nextDir === 0) return filtered;
 
+            // 2. Настраиваем стрелки
+            const isBiDir = nextDir === 1;
+            const isForward = nextDir === 3;
+            const isReverse = nextDir === 2;
+
+            // 3. Создаем новую связь
             const newEdge = {
-                id: `e${source}-${target}`,
+                id: `e${source}-${target}`, // Стабильный ID
                 source,
                 target,
                 label: currentEdge?.label || '1',
-                // type: 'smoothstep',
-                type: 'smart',
-                pathOptions: { borderRadius: 20 }, // Добавил для красоты линий
+
+                // ВАЖНО: Тип линии. Используйте тот, что у вас в FlowBoard (smoothstep или smart)
+                type: 'smoothstep',
+                pathOptions: { borderRadius: 20 },
+
+                // ВАЖНО: Сбрасываем handles, чтобы useEffect в FlowBoard их пересчитал
+                sourceHandle: null,
+                targetHandle: null,
+
                 data: {
                     weight: currentEdge?.data?.weight || 1,
-                    directionCode: nextType
+                    directionCode: nextDir
                 },
-                markerEnd: (isBiDir || isForward) ? { type: 'arrowclosed' } : undefined,
-                markerStart: (isBiDir || isReverse) ? { type: 'arrowclosed' } : undefined,
+
+                // Конфигурация стрелок
+                markerEnd: (isBiDir || isForward) ? ARROW_CONFIG : undefined,
+                markerStart: (isBiDir || isReverse) ? ARROW_CONFIG : undefined,
+
+                // Стиль линии
+                style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' }
             };
 
             return [...filtered, newEdge];

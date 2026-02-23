@@ -10,20 +10,16 @@ import SmartEdge from './SmartEdge';
 import CustomEdge from './CustomEdge';
 import SmartStepEdge from './SmartStepEdge';
 import SmartNode from './SmartNode';
+import SmartBendableEdge from './BendableEdge';
 
-
-// Импортируйте ваш кастомный компонент (если вы его создали по прошлому совету)
-// import CustomEdge from './CustomEdge'; 
 
 let id = 2;
 const getNodeId = () => `${id++}`;
 
-// Настройки по умолчанию
 const defaultEdgeOptions = {
     // interactionWidth: 25,
     style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' },
-    // type: 'smoothstep',
-    type: 'smart',
+    type: 'bendable',
     pathOptions: { borderRadius: 20 },
     labelShowBg: true,
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9, stroke: '#dee2e6', strokeWidth: 1 },
@@ -35,26 +31,22 @@ const defaultEdgeOptions = {
 const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesChange, onEdgeClick }) => {
     const reactFlowWrapper = useRef(null);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
+    const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+    const [pendingConnection, setPendingConnection] = useState(null);
+    const [weightInputValue, setWeightInputValue] = useState('');
 
     const edgeTypes = useMemo(() => ({
-        smart: SmartStepEdge,
+        smart: SmartBendableEdge,
+        bendable: SmartBendableEdge,
     }), []);
 
     const nodeTypes = useMemo(() => ({
-        // Заменяем стандартный на наш умный
         default: SmartNode,
         smart: SmartNode,
     }), []);
 
-    // Внутри FlowBoard.jsx
-
-    // ... внутри FlowBoard ...
-
     useEffect(() => {
         setEdges((eds) => {
-            // Словарь для группировки:
-            // outgoingMap[sourceId] = [edge1, edge2...]
-            // incomingMap[targetId] = [edge1, edge2...]
             const outgoingMap = {};
             const incomingMap = {};
 
@@ -69,22 +61,19 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
             let hasChanges = false;
 
             const newEdges = eds.map(edge => {
-                // 1. Ищем, какой порт занять на ВЫХОДЕ (Source)
+
                 const sourceGroup = outgoingMap[edge.source];
-                // Сортируем по ID целевого узла, чтобы линии не переплетались
-                // (линия к левому узлу выйдет из левого порта)
+
                 sourceGroup.sort((a, b) => a.target.localeCompare(b.target));
                 const sourceIndex = sourceGroup.findIndex(e => e.id === edge.id);
                 const newSourceHandle = `s-${sourceIndex}`;
 
-                // 2. Ищем, какой порт занять на ВХОДЕ (Target)
                 const targetGroup = incomingMap[edge.target];
-                // Сортируем по ID исходного узла
+
                 targetGroup.sort((a, b) => a.source.localeCompare(b.source));
                 const targetIndex = targetGroup.findIndex(e => e.id === edge.id);
                 const newTargetHandle = `t-${targetIndex}`;
 
-                // Если порты не изменились - возвращаем старый объект (чтобы React не ререндерил зря)
                 if (edge.sourceHandle === newSourceHandle && edge.targetHandle === newTargetHandle) {
                     return edge;
                 }
@@ -92,26 +81,23 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 hasChanges = true;
                 return {
                     ...edge,
-                    sourceHandle: newSourceHandle, // Привязываем к нижнему порту
-                    targetHandle: newTargetHandle, // Привязываем к верхнему порту
+                    sourceHandle: newSourceHandle,
+                    targetHandle: newTargetHandle,
                 };
             });
 
             return hasChanges ? newEdges : eds;
         });
     }, [
-        edges.length, // Обновляем только когда меняется кол-во связей
-        // nodes, // Можно раскомментировать, если порты зависят от координат узлов
+        edges.length,
         setEdges
     ]);
 
-    // === НОВОЕ: ПЕРЕИМЕНОВАНИЕ ПО ДВОЙНОМУ КЛИКУ ===
+
     const onNodeDoubleClick = useCallback((event, node) => {
-        // Останавливаем всплытие, чтобы не сработал клик по подложке (создание точки)
         event.preventDefault();
         event.stopPropagation();
 
-        // Спрашиваем новое имя
         const label = prompt('Введите новое название точки:', node.data.label);
 
         // Если нажали отмену или ввели пустоту — ничего не делаем
@@ -136,22 +122,74 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     }, [setNodes]);
 
     const onConnect = useCallback((params) => {
-        const weight = prompt('Введите вес (расстояние) для этой связи:');
-        if (weight === null || isNaN(parseInt(weight)) || parseInt(weight) < 0) return;
+        // const weight = prompt('Введите вес (расстояние) для этой связи:');
+        // if (weight === null || isNaN(parseInt(weight)) || parseInt(weight) < 0) return;
+
+        setPendingConnection(params);
+        setWeightInputValue(''); // Очищаем поле ввода от прошлых значений
+        setIsWeightModalOpen(true);
 
         const newEdge = {
             ...params,
             id: `e${params.source}-${params.target}-${Date.now()}`,
             label: weight,
-            // type: 'smoothstep',
-            type: 'smart',
+            type: 'bendable',
             pathOptions: { borderRadius: 20 },
-            data: { weight: parseInt(weight), directionCode: 1 },
+            data: { offsetX: 0, offsetY: 0, directionCode: 1 },
             markerEnd: { type: 'arrowclosed' },
             markerStart: { type: 'arrowclosed' },
+            style: { strokeWidth: 2, stroke: '#b1b1b7' },
         };
         setEdges((eds) => addEdge(newEdge, eds));
     }, [setEdges]);
+
+    const handleCancelConnection = () => {
+        setIsWeightModalOpen(false);
+        setPendingConnection(null);
+    };
+
+    const handleConfirmConnection = () => {
+        const weight = parseInt(weightInputValue, 10);
+
+        // Проверка на валидность (число не меньше 0)
+        if (isNaN(weight) || weight < 0) {
+            alert('Пожалуйста, введите корректный вес (число >= 0)');
+            return;
+        }
+
+        // Создаем связь на основе сохраненных params
+        const newEdge = {
+            ...pendingConnection,
+            id: `e${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
+            label: weight.toString(), // На графике отображаем строку
+            type: 'bendable',
+            pathOptions: { borderRadius: 20 },
+            data: {
+                offsetX: 0,
+                offsetY: 0,
+                directionCode: 1,
+                weight: weight // ВАЖНО: сохраняем вес в data для матрицы!
+            },
+            markerEnd: { type: 'arrowclosed' },
+            markerStart: { type: 'arrowclosed' },
+            style: { strokeWidth: 2, stroke: '#b1b1b7' },
+        };
+
+        setEdges((eds) => addEdge(newEdge, eds));
+
+        // Закрываем окно и очищаем данные
+        setIsWeightModalOpen(false);
+        setPendingConnection(null);
+    };
+
+    // Чтобы можно было нажать Enter в инпуте
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleConfirmConnection();
+        } else if (e.key === 'Escape') {
+            handleCancelConnection();
+        }
+    };
 
     const handleWrapperDoubleClick = useCallback((event) => {
         if (!reactFlowWrapper.current || !reactFlowInstance) return;
@@ -224,6 +262,35 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
             >
                 <Controls />
                 <Background variant="dots" gap={20} size={1} color="#ccc" />
+
+                {/* МОДАЛЬНОЕ ОКНО ДЛЯ ВВОДА ВЕСА */}
+                {isWeightModalOpen && (
+                    <div className="modal-overlay">
+                        <div className="modal-content">
+                            <h4>Новая связь</h4>
+                            <p>Введите вес (расстояние) для связи:</p>
+
+                            <input
+                                type="number"
+                                autoFocus
+                                value={weightInputValue}
+                                onChange={(e) => setWeightInputValue(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Например: 15"
+                                className="weight-popup-input"
+                            />
+
+                            <div className="modal-actions">
+                                <button className="btn-cancel" onClick={handleCancelConnection}>
+                                    Отмена
+                                </button>
+                                <button className="btn-confirm" onClick={handleConfirmConnection}>
+                                    Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </ReactFlow>
         </div>
     );

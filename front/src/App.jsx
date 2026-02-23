@@ -6,7 +6,6 @@ import AuhtPage from './pages/auth/AuthPage';
 import './App.css';
 import { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-// import { useStore } from 'reactflow';
 import { useStore } from './store';
 
 const App = () => {

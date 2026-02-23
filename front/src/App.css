@@ -857,3 +857,92 @@
   box-shadow: none !important;
   padding: 0 !important; /* Убираем отступы, чтобы размеры контролировал ваш компонент */
 }
+
+/* Затемнение фона */
+.modal-overlay {
+  position: absolute; /* absolute, чтобы окно было внутри блока графа */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000; /* Должно быть поверх графа */
+}
+
+/* Сама карточка окна */
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-content h4 {
+  margin: 0;
+  color: #343a40;
+  font-size: 18px;
+}
+
+.modal-content p {
+  margin: 0;
+  color: #868e96;
+  font-size: 14px;
+}
+
+/* Поле ввода */
+.weight-popup-input {
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.weight-popup-input:focus {
+  border-color: #228be6;
+  box-shadow: 0 0 0 3px rgba(34, 139, 230, 0.2);
+}
+
+/* Кнопки */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.modal-actions button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #495057;
+}
+
+.btn-cancel:hover {
+  background: #f1f3f5;
+}
+
+.btn-confirm {
+  background: #228be6;
+  color: white;
+}
+
+.btn-confirm:hover {
+  background: #1c7ed6;
+}

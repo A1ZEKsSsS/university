@@ -64,7 +64,6 @@ const AuthPage = ({ onLoginSuccess }) => {
                 });
             }
             setTimer(60);
-            alert('Код отправлен повторно');
         } catch (e) {
             console.error(e);
             setError('Не удалось отправить код повторно');
@@ -144,7 +143,6 @@ const AuthPage = ({ onLoginSuccess }) => {
                         navigate('/');
                     } else {
                         switchMode('login');
-                        alert('Пароль изменен. Войдите в аккаунт.');
                     }
                 }
             }
