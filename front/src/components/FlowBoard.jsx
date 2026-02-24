@@ -100,19 +100,16 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
 
         const label = prompt('Введите новое название точки:', node.data.label);
 
-        // Если нажали отмену или ввели пустоту — ничего не делаем
         if (label === null || label.trim() === '') return;
 
-        // Обновляем состояние узлов
         setNodes((nds) =>
             nds.map((n) => {
                 if (n.id === node.id) {
-                    // Создаем копию узла с новым label внутри data
                     return {
                         ...n,
                         data: {
                             ...n.data,
-                            label: label, // Новое имя
+                            label: label,
                         },
                     };
                 }
@@ -122,11 +119,9 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     }, [setNodes]);
 
     const onConnect = useCallback((params) => {
-        // const weight = prompt('Введите вес (расстояние) для этой связи:');
-        // if (weight === null || isNaN(parseInt(weight)) || parseInt(weight) < 0) return;
 
         setPendingConnection(params);
-        setWeightInputValue(''); // Очищаем поле ввода от прошлых значений
+        setWeightInputValue('');
         setIsWeightModalOpen(true);
 
         const newEdge = {
@@ -151,24 +146,22 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     const handleConfirmConnection = () => {
         const weight = parseInt(weightInputValue, 10);
 
-        // Проверка на валидность (число не меньше 0)
         if (isNaN(weight) || weight < 0) {
             alert('Пожалуйста, введите корректный вес (число >= 0)');
             return;
         }
 
-        // Создаем связь на основе сохраненных params
         const newEdge = {
             ...pendingConnection,
             id: `e${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
-            label: weight.toString(), // На графике отображаем строку
+            label: weight.toString(),
             type: 'bendable',
             pathOptions: { borderRadius: 20 },
             data: {
                 offsetX: 0,
                 offsetY: 0,
                 directionCode: 1,
-                weight: weight // ВАЖНО: сохраняем вес в data для матрицы!
+                weight: weight
             },
             markerEnd: { type: 'arrowclosed' },
             markerStart: { type: 'arrowclosed' },
@@ -177,12 +170,10 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
 
         setEdges((eds) => addEdge(newEdge, eds));
 
-        // Закрываем окно и очищаем данные
         setIsWeightModalOpen(false);
         setPendingConnection(null);
     };
 
-    // Чтобы можно было нажать Enter в инпуте
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') {
             handleConfirmConnection();
@@ -214,7 +205,6 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         setNodes((nds) => nds.concat(newNode));
     }, [reactFlowInstance, setNodes]);
 
-    // ... (ваши onNodeContextMenu и onEdgeContextMenu остаются без изменений) ...
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault();
         event.stopPropagation();
@@ -251,7 +241,6 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 onEdgeContextMenu={onEdgeContextMenu}
                 onEdgeClick={onEdgeClick}
 
-                // === ПОДКЛЮЧАЕМ ОБРАБОТЧИК ===
                 onNodeDoubleClick={onNodeDoubleClick}
                 edgeTypes={edgeTypes}
                 nodeTypes={nodeTypes}
@@ -263,7 +252,6 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 <Controls />
                 <Background variant="dots" gap={20} size={1} color="#ccc" />
 
-                {/* МОДАЛЬНОЕ ОКНО ДЛЯ ВВОДА ВЕСА */}
                 {isWeightModalOpen && (
                     <div className="modal-overlay">
                         <div className="modal-content">

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-// import './MatrixInput.css';
 
 const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
-    // Состояние переключателя: 'table' (Твой вариант) или 'cards' (Для телефона)
     const [viewType, setViewType] = useState('table');
 
     const findEdge = (source, target) => {
@@ -36,12 +34,11 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         type: 'arrowclosed',
         width: 20,
         height: 20,
-        color: '#b1b1b7', // Цвет как на графе
+        color: '#b1b1b7',
     };
 
-    // ТВОЯ ФУНКЦИЯ (Без изменений)
     const handleBindChange = (source, target, currentEdge) => {
-        // Логика: 0 (нет) -> 1 (<->) -> 3 (->) -> 2 (<-) -> 0
+
         let currentDir = 0;
         if (currentEdge) {
             currentDir = currentEdge.data?.directionCode || 1;
@@ -54,29 +51,23 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         else if (currentDir === 2) nextDir = 0;
 
         setEdges((eds) => {
-            // 1. Удаляем старую связь
             const filtered = eds.filter(e => !(e.source === source && e.target === target));
 
-            // Если удаляем связь (nextDir === 0), просто возвращаем список без неё
             if (nextDir === 0) return filtered;
 
-            // 2. Настраиваем стрелки
             const isBiDir = nextDir === 1;
             const isForward = nextDir === 3;
             const isReverse = nextDir === 2;
 
-            // 3. Создаем новую связь
             const newEdge = {
-                id: `e${source}-${target}`, // Стабильный ID
+                id: `e${source}-${target}`,
                 source,
                 target,
                 label: currentEdge?.label || '1',
 
-                // ВАЖНО: Тип линии. Используйте тот, что у вас в FlowBoard (smoothstep или smart)
                 type: 'smoothstep',
                 pathOptions: { borderRadius: 20 },
 
-                // ВАЖНО: Сбрасываем handles, чтобы useEffect в FlowBoard их пересчитал
                 sourceHandle: null,
                 targetHandle: null,
 
@@ -85,11 +76,9 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                     directionCode: nextDir
                 },
 
-                // Конфигурация стрелок
                 markerEnd: (isBiDir || isForward) ? ARROW_CONFIG : undefined,
                 markerStart: (isBiDir || isReverse) ? ARROW_CONFIG : undefined,
 
-                // Стиль линии
                 style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' }
             };
 
@@ -97,13 +86,8 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         });
     };
 
-    // ТВОЯ ФУНКЦИЯ (Без изменений)
-    const handleWeightChange = (source, target, value) => {
-        // Разрешаем пустую строку для стирания, но не сохраняем её как NaN
-        if (value === '') {
-            // Можно просто обновить label на пустоту, но не трогать вес пока
-        }
 
+    const handleWeightChange = (source, target, value) => {
         setEdges((eds) => {
             const edgeExists = eds.find(e => e.source === source && e.target === target);
             const numValue = value === '' ? 0 : parseInt(value, 10);
@@ -120,24 +104,21 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                     return e;
                 });
             }
-            // Если ребра нет, мы его не создаем через input веса (только через кнопку типа)
             return eds;
         });
     };
 
-    // Хелпер для иконок кнопок
     const getBtnLabel = (edge) => {
         if (!edge) return <span style={{ opacity: 0.3 }}>•</span>;
         const code = edge.data?.directionCode;
         if (code === 1) return '↔';
         if (code === 3) return '→';
         if (code === 2) return '←';
-        return '↔'; // fallback
+        return '↔';
     };
 
     return (
         <div className="matrix-container">
-            {/* === ШАПКА С ПЕРЕКЛЮЧАТЕЛЕМ === */}
             <div className="matrix-header-row">
                 <div className="view-switcher">
                     <button
@@ -159,10 +140,8 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                 </button>
             </div>
 
-            {/* === ВАРИАНТ 1: ТВОИ ТАБЛИЦЫ (LEGACY) === */}
             {viewType === 'table' && (
                 <div className="tables-wrapper">
-                    {/* Таблица 1: Топология */}
                     <div className="matrix-card">
                         <h4>Связи</h4>
                         <div className="table-scroll-area">
@@ -205,7 +184,6 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                         </div>
                     </div>
 
-                    {/* Таблица 2: Веса */}
                     <div className="matrix-card">
                         <h4>Веса</h4>
                         <div className="table-scroll-area">
@@ -249,7 +227,6 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                 </div>
             )}
 
-            {/* === ВАРИАНТ 2: КАРТОЧКИ (ДЛЯ ТЕЛЕФОНА) === */}
             {viewType === 'cards' && (
                 <div className="cards-grid">
                     {nodes.map(source => (
@@ -269,7 +246,6 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                             <span className="target-label">к {target.data.label}</span>
 
                                             <div className="mobile-controls">
-                                                {/* Кнопка типа связи (та же логика) */}
                                                 <button
                                                     onClick={() => handleBindChange(source.id, target.id, edge)}
                                                     className={`topology-btn mobile ${isActive ? 'active' : ''}`}
@@ -277,7 +253,6 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                                     {getBtnLabel(edge)}
                                                 </button>
 
-                                                {/* Инпут веса (та же логика) */}
                                                 <input
                                                     type="number"
                                                     className="weight-input-mobile"

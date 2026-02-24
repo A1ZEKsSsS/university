@@ -1,9 +1,7 @@
 import React from 'react';
 
 const ResultPanel = ({ result, onCellClick }) => {
-    // Проверка: есть ли данные и есть ли матрица расстояний (dist)
-    // Раньше result был просто матрицей, теперь это объект { dist, paths }
-    // Поддержим оба варианта на всякий случай
+
     const distMatrix = result?.dist || (Array.isArray(result) ? result : null);
 
     if (!distMatrix) return null;
@@ -44,7 +42,7 @@ const ResultPanel = ({ result, onCellClick }) => {
 
                             {/* Ячейки */}
                             {row.map((val, j) => {
-                                const isInf = val > 1000000; // Проверка на "бесконечность"
+                                const isInf = val > 1000000;
                                 const isDiagonal = i === j;
 
                                 return (
@@ -59,7 +57,6 @@ const ResultPanel = ({ result, onCellClick }) => {
                                             color: isInf ? '#adb5bd' : '#000',
                                             transition: 'background 0.2s'
                                         }}
-                                        // Добавляем hover эффект через inline-события для простоты
                                         onMouseEnter={(e) => { if (!isInf && !isDiagonal) e.target.style.background = '#e7f5ff'; }}
                                         onMouseLeave={(e) => { if (!isInf && !isDiagonal) e.target.style.background = 'white'; }}
                                     >

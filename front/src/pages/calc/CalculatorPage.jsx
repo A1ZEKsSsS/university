@@ -11,7 +11,6 @@ const initialNodes = [
     { id: '1', type: 'default', data: { label: 'Точка 1' }, position: { x: 100, y: 100 } },
 ];
 
-// Палитра цветов для разных маршрутов
 const PATH_COLORS = [
     '#ff0072', // Розовый (основной)
     '#00d2ff', // Голубой
@@ -29,13 +28,11 @@ const CalculatorContent = () => {
 
     const [resultData, setResultData] = useState(null);
 
-    // ИЗМЕНЕНИЕ 1: Храним массив массивов (все найденные пути)
     const [highlightedPaths, setHighlightedPaths] = useState([]);
 
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Состояние для меню смены направления
     const [edgeMenu, setEdgeMenu] = useState(null);
 
     const ARROW_CONFIG = {
@@ -44,25 +41,20 @@ const CalculatorContent = () => {
         height: 20,
         color: '#b1b1b7',
     };
-    // === ЭФФЕКТ ДЛЯ ПОДСВЕТКИ ПУТЕЙ РАЗНЫМИ ЦВЕТАМИ ===
-    // === ЭФФЕКТ: ПОДСВЕТКА НАЙДЕННОГО ПУТИ ===
     useEffect(() => {
         setEdges((eds) =>
             eds.map((edge) => {
-                // Настройки по умолчанию (неактивная линия)
                 let strokeColor = '#b1b1b7';
-                let strokeWidth = 2; // Чуть толще по умолчанию для читаемости
+                let strokeWidth = 2;
                 let isAnimated = false;
-                let zIndex = 0; // Обычные линии внизу
+                let zIndex = 0;
                 let fontWeight = 'normal';
-                let labelBgColor = '#ffffff'; // Белый фон для обычного текста
+                let labelBgColor = '#ffffff';
 
-                // Проверяем, входит ли ребро в один из путей
                 if (highlightedPaths.length > 0) {
                     for (let pathIdx = 0; pathIdx < highlightedPaths.length; pathIdx++) {
                         const path = highlightedPaths[pathIdx];
 
-                        // Логика поиска (u->v или v->u)
                         let belongsToPath = false;
                         for (let i = 0; i < path.length - 1; i++) {
                             const u = path[i];
@@ -75,15 +67,12 @@ const CalculatorContent = () => {
                             }
                         }
 
-                        // Если ребро часть пути — красим
                         if (belongsToPath) {
                             strokeColor = PATH_COLORS[pathIdx % PATH_COLORS.length];
-                            strokeWidth = 4; // Делаем путь жирным
-                            isAnimated = true; // "Бегущие муравьи"
-                            zIndex = 1000; // <--- ВАЖНО: Путь всегда поверх всего!
+                            strokeWidth = 4;
+                            isAnimated = true;
+                            zIndex = 1000;
                             fontWeight = 'bold';
-                            // Можно даже подкрасить фон текста в цвет пути (опционально)
-                            // labelBgColor = '#fff0f6'; 
                             break;
                         }
                     }
@@ -91,10 +80,9 @@ const CalculatorContent = () => {
 
                 return {
                     ...edge,
-                    // === ПРИНУДИТЕЛЬНЫЙ ДИЗАЙН ===
-                    type: 'smoothstep', // Прямые углы
-                    pathOptions: { borderRadius: 20 }, // Скругление
-                    interactionWidth: 25, // Удобный клик
+                    type: 'smoothstep',
+                    pathOptions: { borderRadius: 20 },
+                    interactionWidth: 25,
 
                     style: {
                         ...edge.style,
@@ -103,16 +91,14 @@ const CalculatorContent = () => {
                         cursor: 'pointer'
                     },
                     animated: isAnimated,
-                    zIndex: zIndex, // Применяем слой (0 или 1000)
+                    zIndex: zIndex,
 
-                    // Настройки текста
                     labelStyle: {
-                        ...edge.labelStyle, // Сохраняем старые стили если были
-                        fill: strokeColor === '#b1b1b7' ? '#000' : strokeColor, // Текст цвета линии
+                        ...edge.labelStyle,
+                        fill: strokeColor === '#b1b1b7' ? '#000' : strokeColor,
                         fontWeight: fontWeight,
                         fontSize: 12,
                     },
-                    // Убеждаемся, что фон текста включен (если вдруг defaultEdgeOptions не сработал)
                     labelShowBg: true,
                     labelBgStyle: { fill: labelBgColor, fillOpacity: 0.9, stroke: '#dee2e6', strokeWidth: 1 },
                     labelBgPadding: [6, 4],
@@ -125,7 +111,7 @@ const CalculatorContent = () => {
     const handleCalculate = async () => {
         setError(null);
         setResultData(null);
-        setHighlightedPaths([]); // Сброс
+        setHighlightedPaths([]);
         setIsLoading(true);
 
         try {
@@ -158,14 +144,12 @@ const CalculatorContent = () => {
     const handleEdgeClick = (event, edge) => {
         event.stopPropagation();
 
-        // Показываем меню выбора направления
         setEdgeMenu({
             edgeId: edge.id,
             x: event.clientX,
             y: event.clientY
         });
 
-        // Показываем синий кружок
         setEdges((eds) => eds.map((e) => {
             if (e.id !== edge.id) return { ...e, selected: false, zIndex: 0 };
             return { ...e, selected: true, zIndex: 100, type: 'bendable' };
@@ -198,15 +182,12 @@ const CalculatorContent = () => {
         setEdgeMenu(null);
     };
 
-    // БЫЛО: const handleEdgeClick = (event, edge) => { ... }
-    // СТАЛО:
     const handleEdgeDoubleClick = (event, edge) => {
         event.stopPropagation();
 
         setEdges((eds) => eds.map((e) => {
             if (e.id !== edge.id) return { ...e, zIndex: 0 };
 
-            // Логика смены направления (остается вашей)
             const currentDir = e.data?.directionCode || 1;
             let nextDir = 1;
             if (currentDir === 1) nextDir = 3;
@@ -221,7 +202,6 @@ const CalculatorContent = () => {
                 ...e,
                 id: `e${e.source}-${e.target}-${Date.now()}`,
                 zIndex: 100,
-                // selected: false, <-- ЭТУ СТРОКУ МОЖНО УДАЛИТЬ ИЛИ ОСТАВИТЬ, при двойном клике уже не так важно
                 data: {
                     ...e.data,
                     directionCode: nextDir
@@ -232,15 +212,12 @@ const CalculatorContent = () => {
             };
         }));
     };
-    // ИЗМЕНЕНИЕ 3: Обрабатываем все пути сразу
     const handleCellClick = (startIdx, endIdx) => {
         if (!resultData || !resultData.paths) return;
 
-        // pathsArray - это массив массивов (список альтернативных путей)
         const pathsArray = resultData.paths[startIdx][endIdx];
 
         if (pathsArray && pathsArray.length > 0) {
-            // Превращаем каждый путь (массив индексов) в массив ID (строк)
             const allPathsIds = pathsArray.map(singlePath =>
                 singlePath.map(idx => (idx + 1).toString())
             );
@@ -312,7 +289,6 @@ const CalculatorContent = () => {
                             onEdgeDoubleClick={handleEdgeDoubleClick}
                         />
 
-                        {/* Легенда, если путей больше одного */}
                         {highlightedPaths.length > 1 && viewMode === 'visual' && (
                             <div style={{
                                 position: 'absolute',
@@ -335,7 +311,6 @@ const CalculatorContent = () => {
                             </div>
                         )}
 
-                        {/* Меню выбора направления */}
                         {edgeMenu && (
                             <div
                                 style={{
