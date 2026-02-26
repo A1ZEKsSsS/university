@@ -37,10 +37,8 @@ const ResultPanel = ({ result, onCellClick }) => {
                 <tbody>
                     {distMatrix.map((row, i) => (
                         <tr key={i}>
-                            {/* Заголовок ряда */}
                             <td style={{ fontWeight: 'bold', background: '#f8f9fa', border: '1px solid #dee2e6' }}>{i + 1}</td>
 
-                            {/* Ячейки */}
                             {row.map((val, j) => {
                                 const isInf = val > 1000000;
                                 const isDiagonal = i === j;

@@ -12,12 +12,12 @@ const initialNodes = [
 ];
 
 const PATH_COLORS = [
-    '#ff0072', // Розовый (основной)
-    '#00d2ff', // Голубой
-    '#00ff48', // Ярко-зеленый
-    '#ff9f00', // Оранжевый
-    '#9d00ff', // Фиолетовый
-    '#ffea00'  // Желтый
+    '#ff0072', // Рожевий (основний)
+    '#00d2ff', // Блакитний
+    '#00ff48', // Яскраво-зелений
+    '#ff9f00', // Оранжевий
+    '#9d00ff', // Фіолетовий
+    '#ffea00'  // Жовтий
 ];
 
 const CalculatorContent = () => {
@@ -117,8 +117,8 @@ const CalculatorContent = () => {
         try {
             const { bind, weight, totalNodes } = generateMatrices(edges);
 
-            console.group('📊 Данные перед отправкой');
-            console.log(`Всего узлов: ${totalNodes}`);
+            console.group('📊 Дані перед відправкою');
+            console.log(`Всього вузлів: ${totalNodes}`);
             console.table(bind);
             console.table(weight);
             console.groupEnd();
@@ -129,7 +129,7 @@ const CalculatorContent = () => {
                 totalNodes
             });
 
-            if (response.status !== 200) throw new Error('Ошибка сети или сервера');
+            if (response.status !== 200) throw new Error('Помилка мережі або сервера');
 
             const result = await response.data;
             setResultData(result);
@@ -141,19 +141,39 @@ const CalculatorContent = () => {
             setIsLoading(false);
         }
     };
+
     const handleEdgeClick = (event, edge) => {
         event.stopPropagation();
 
+        // Запам'ятовуємо ID та поточну вагу лінії
         setEdgeMenu({
             edgeId: edge.id,
-            x: event.clientX,
-            y: event.clientY
+            weight: edge.data?.weight || parseInt(edge.label, 10) || 0
         });
 
         setEdges((eds) => eds.map((e) => {
             if (e.id !== edge.id) return { ...e, selected: false, zIndex: 0 };
             return { ...e, selected: true, zIndex: 100, type: 'bendable' };
         }));
+    };
+
+    const handleEdgeWeightChange = (newWeight) => {
+        if (!edgeMenu) return;
+
+        const weightNum = parseInt(newWeight, 10);
+        if (isNaN(weightNum) || weightNum < 0) return;
+
+        setEdges((eds) => eds.map((e) => {
+            if (e.id !== edgeMenu.edgeId) return e;
+            return {
+                ...e,
+                label: weightNum.toString(),
+                data: { ...e.data, weight: weightNum }
+            };
+        }));
+
+        // Оновлюємо вагу у самому меню, щоб інпут не скидалося
+        setEdgeMenu(prev => ({ ...prev, weight: weightNum }));
     };
 
     const handleDirectionChange = (directionCode) => {
@@ -243,9 +263,13 @@ const CalculatorContent = () => {
                 onCalculate={handleCalculate}
                 error={error}
                 isLoading={isLoading}
+                edgeMenu={edgeMenu}
+                onDirectionChange={handleDirectionChange}
+                onDeleteEdge={handleDeleteEdge}
+                onWeightChange={handleEdgeWeightChange}
             />
 
-            <div className='flowboard-container' style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div className='flowboard-container' style={{ display: 'flex', flexDirection: 'column' }}>
 
                 <div style={{ padding: '10px 20px', background: '#f8f9fa', borderBottom: '1px solid #ddd', display: 'flex', gap: '10px' }}>
                     <button
@@ -256,7 +280,8 @@ const CalculatorContent = () => {
                             fontWeight: viewMode === 'visual' ? 'bold' : 'normal',
                             backgroundColor: viewMode === 'visual' ? '#e9ecef' : 'transparent',
                             border: '1px solid #ccc',
-                            borderRadius: '4px'
+                            borderRadius: '4px',
+                            color: '#333'
                         }}
                     >
                         🎨 Граф
@@ -269,10 +294,11 @@ const CalculatorContent = () => {
                             fontWeight: viewMode === 'matrix' ? 'bold' : 'normal',
                             backgroundColor: viewMode === 'matrix' ? '#e9ecef' : 'transparent',
                             border: '1px solid #ccc',
-                            borderRadius: '4px'
+                            borderRadius: '4px',
+                            color: '#333'
                         }}
                     >
-                        🔢 Таблица
+                        🔢 Таблиця
                     </button>
                 </div>
 
@@ -287,6 +313,10 @@ const CalculatorContent = () => {
                             onEdgesChange={onEdgesChange}
                             onEdgeClick={handleEdgeClick}
                             onEdgeDoubleClick={handleEdgeDoubleClick}
+                            edgeMenu={edgeMenu}
+                            setEdgeMenu={setEdgeMenu}
+                            onDirectionChange={handleDirectionChange}
+                            onDeleteEdge={handleDeleteEdge}
                         />
 
                         {highlightedPaths.length > 1 && viewMode === 'visual' && (
@@ -311,12 +341,12 @@ const CalculatorContent = () => {
                             </div>
                         )}
 
-                        {edgeMenu && (
+                        {/* {edgeMenu && (
                             <div
                                 style={{
                                     position: 'absolute',
-                                    left: edgeMenu.x,
-                                    top: edgeMenu.y,
+                                    left: edgeMenu.x - 250,
+                                    top: edgeMenu.y - 200,
                                     background: 'white',
                                     border: '1px solid #ccc',
                                     borderRadius: '8px',
@@ -400,10 +430,10 @@ const CalculatorContent = () => {
                                     onMouseEnter={(e) => e.target.style.background = '#ffebee'}
                                     onMouseLeave={(e) => e.target.style.background = 'transparent'}
                                 >
-                                    🗑️ Удалить
+                                    🗑️ Видалити
                                 </button>
                             </div>
-                        )}
+                        )} */}
                     </div>
 
                     {viewMode === 'matrix' && (

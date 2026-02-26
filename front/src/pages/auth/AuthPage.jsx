@@ -66,7 +66,7 @@ const AuthPage = ({ onLoginSuccess }) => {
             setTimer(60);
         } catch (e) {
             console.error(e);
-            setError('Не удалось отправить код повторно');
+            setError('Не вдалося надіслати код повторно');
         } finally {
             setIsResending(false);
         }
@@ -78,10 +78,10 @@ const AuthPage = ({ onLoginSuccess }) => {
         setIsLoading(true);
 
         try {
-            if (!formData.email) throw new Error('Введите Email');
+            if (!formData.email) throw new Error('Введіть Email');
 
             if (authMode === 'login') {
-                if (!formData.password) throw new Error('Введите пароль');
+                if (!formData.password) throw new Error('Введіть пароль');
                 const response = await axios.post('/api/auth/signin', {
                     email: formData.email,
                     password: formData.password
@@ -93,7 +93,7 @@ const AuthPage = ({ onLoginSuccess }) => {
             else if (authMode === 'register') {
 
                 if (!isCodeSent) {
-                    if (formData.password !== formData.confirmPassword) throw new Error('Пароли не совпадают');
+                    if (formData.password !== formData.confirmPassword) throw new Error('Паролі не співпадають');
 
                     await axios.post('/api/auth/verify-email', {
                         email: formData.email,
@@ -104,7 +104,7 @@ const AuthPage = ({ onLoginSuccess }) => {
                     setTimer(60);
                 }
                 else {
-                    if (!formData.code) throw new Error('Введите код');
+                    if (!formData.code) throw new Error('Введіть код');
 
                     await axios.post('/api/auth/confirm-verify-email', {
                         email: formData.email,
@@ -130,7 +130,7 @@ const AuthPage = ({ onLoginSuccess }) => {
                     setIsCodeSent(true);
                     setTimer(60);
                 } else {
-                    if (formData.password !== formData.confirmPassword) throw new Error('Пароли не совпадают');
+                    if (formData.password !== formData.confirmPassword) throw new Error('Паролі не співпадають');
 
                     const response = await axios.post('/api/auth/reset-password-confirm', {
                         email: formData.email,
@@ -149,7 +149,7 @@ const AuthPage = ({ onLoginSuccess }) => {
 
         } catch (e) {
             console.error(e);
-            const msg = e.response?.data?.message || e.message || 'Произошла ошибка';
+            const msg = e.response?.data?.message || e.message || 'Сталася помилка';
             setError(msg);
         } finally {
             setIsLoading(false);
@@ -157,9 +157,9 @@ const AuthPage = ({ onLoginSuccess }) => {
     };
 
     const getTitle = () => {
-        if (authMode === 'login') return 'Вход';
-        if (authMode === 'register') return isCodeSent ? 'Подтверждение регистрации' : 'Регистрация';
-        if (authMode === 'recovery') return isCodeSent ? 'Смена пароля' : 'Восстановление';
+        if (authMode === 'login') return 'Вхід';
+        if (authMode === 'register') return isCodeSent ? 'Підтвердження реєстрації' : 'Реєстрація';
+        if (authMode === 'recovery') return isCodeSent ? 'Зміна пароля' : 'Відновлення';
     };
 
     return (
@@ -170,8 +170,8 @@ const AuthPage = ({ onLoginSuccess }) => {
 
                     {(authMode !== 'recovery' && !isCodeSent) && (
                         <div className="auth-tabs">
-                            <button className={`tab-btn ${authMode === 'login' ? 'active' : ''}`} onClick={() => switchMode('login')}>Вход</button>
-                            <button className={`tab-btn ${authMode === 'register' ? 'active' : ''}`} onClick={() => switchMode('register')}>Регистрация</button>
+                            <button className={`tab-btn ${authMode === 'login' ? 'active' : ''}`} onClick={() => switchMode('login')}>Вхід</button>
+                            <button className={`tab-btn ${authMode === 'register' ? 'active' : ''}`} onClick={() => switchMode('register')}>Реєстрація</button>
                         </div>
                     )}
                 </div>
@@ -181,7 +181,7 @@ const AuthPage = ({ onLoginSuccess }) => {
                 <form className="auth-form" onSubmit={handleSubmit}>
 
                     <div className="form-group">
-                        <label>Email адрес</label>
+                        <label>Email адреса</label>
                         <input type="email" name="email" className="form-input" placeholder="name@example.com" value={formData.email} onChange={handleChange} disabled={isCodeSent} />
                     </div>
 
@@ -194,14 +194,14 @@ const AuthPage = ({ onLoginSuccess }) => {
 
                     {((authMode === 'register' && !isCodeSent) || (authMode === 'recovery' && isCodeSent)) && (
                         <div className="form-group">
-                            <label>{authMode === 'recovery' ? 'Новый пароль' : 'Повторите пароль'}</label>
+                            <label>{authMode === 'recovery' ? 'Новий пароль' : 'Повторіть пароль'}</label>
                             <input type="password" name="confirmPassword" className="form-input" placeholder="******" value={formData.confirmPassword} onChange={handleChange} />
                         </div>
                     )}
 
                     {authMode === 'login' && (
                         <div className="forgot-pass-wrapper">
-                            <span className="link-forgot" onClick={() => switchMode('recovery')}>Забыли пароль?</span>
+                            <span className="link-forgot" onClick={() => switchMode('recovery')}>Забули пароль?</span>
                         </div>
                     )}
 
@@ -209,43 +209,43 @@ const AuthPage = ({ onLoginSuccess }) => {
                         <div className="fade-in">
                             {authMode === 'recovery' && (
                                 <div className="form-group">
-                                    <label>Новый пароль</label>
+                                    <label>Новий пароль</label>
                                     <input type="password" name="password" className="form-input" placeholder="New pass" value={formData.password} onChange={handleChange} />
                                 </div>
                             )}
 
-                            <div className="info-text">Код отправлен на {formData.email}</div>
+                            <div className="info-text">Код відправлено на {formData.email}</div>
 
                             <div className="form-group">
-                                <label>Код из письма</label>
+                                <label>Код з листа</label>
                                 <input type="text" name="code" className="form-input code-input" placeholder="1234" value={formData.code} onChange={handleChange} autoFocus />
                             </div>
 
                             <div className="resend-wrapper">
                                 {timer > 0 ? (
-                                    <span className="resend-timer">Отправить повторно через {timer}с</span>
+                                    <span className="resend-timer">Відправити повторно через {timer}с</span>
                                 ) : (
                                     <span className={`resend-link ${isResending ? 'disabled' : ''}`} onClick={handleResend}>
-                                        {isResending ? 'Отправка...' : 'Отправить код повторно'}
+                                        {isResending ? 'Відправка...' : 'Відправити код повторно'}
                                     </span>
                                 )}
                             </div>
 
-                            <div className="link-back" onClick={() => setIsCodeSent(false)}>← Изменить Email</div>
+                            <div className="link-back" onClick={() => setIsCodeSent(false)}>← Змінити Email</div>
                         </div>
                     )}
 
                     <button type="submit" className="submit-btn" disabled={isLoading}>
-                        {isLoading ? 'Загрузка...' : (
-                            authMode === 'login' ? 'Войти' :
-                                authMode === 'register' ? (isCodeSent ? 'Подтвердить и создать' : 'Далее') :
-                                    (isCodeSent ? 'Сменить пароль' : 'Отправить код')
+                        {isLoading ? 'Завантаження...' : (
+                            authMode === 'login' ? 'Увійти' :
+                                authMode === 'register' ? (isCodeSent ? 'Підтвердити і створити' : 'Далі') :
+                                    (isCodeSent ? 'Змінити пароль' : 'Відправити код')
                         )}
                     </button>
 
                     {(authMode === 'recovery' && !isCodeSent) && (
                         <div className="secondary-action">
-                            <span className="link" onClick={() => switchMode('login')}>Вернуться ко входу</span>
+                            <span className="link" onClick={() => switchMode('login')}>Повернутися до входу</span>
                         </div>
                     )}
                 </form>

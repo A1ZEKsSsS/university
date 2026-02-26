@@ -32,7 +32,7 @@ const start = async () => {
         await connect();
 
         app.listen(PORT, () => {
-            console.log(`Сервер запущен на http://localhost:${PORT}`);
+            console.log(`Сервер запущено на http://localhost:${PORT}`);
         });
     } catch (e) {
         console.log(e);

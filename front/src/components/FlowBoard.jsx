@@ -13,9 +13,6 @@ import SmartNode from './SmartNode';
 import SmartBendableEdge from './BendableEdge';
 
 
-let id = 2;
-const getNodeId = () => `${id++}`;
-
 const defaultEdgeOptions = {
     // interactionWidth: 25,
     style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' },
@@ -34,6 +31,8 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
     const [pendingConnection, setPendingConnection] = useState(null);
     const [weightInputValue, setWeightInputValue] = useState('');
+    const [weightError, setWeightError] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const edgeTypes = useMemo(() => ({
         smart: SmartBendableEdge,
@@ -98,7 +97,7 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         event.preventDefault();
         event.stopPropagation();
 
-        const label = prompt('Введите новое название точки:', node.data.label);
+        const label = prompt('Введіть нову назву точки:', node.data.label);
 
         if (label === null || label.trim() === '') return;
 
@@ -122,6 +121,7 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
 
         setPendingConnection(params);
         setWeightInputValue('');
+        setWeightError('');
         setIsWeightModalOpen(true);
 
         const newEdge = {
@@ -147,7 +147,7 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         const weight = parseInt(weightInputValue, 10);
 
         if (isNaN(weight) || weight < 0) {
-            alert('Пожалуйста, введите корректный вес (число >= 0)');
+            setWeightError('Введіть коректне число (≥ 0)');
             return;
         }
 
@@ -194,33 +194,53 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
             y: event.clientY,
         });
 
-        const newId = getNodeId();
+        const ids = nodes.map(n => parseInt(n.id, 10)).filter(n => !isNaN(n));
+        const maxId = ids.length > 0 ? Math.max(...ids) : 0;
+
+        const newId = (maxId + 1).toString();
+
         const newNode = {
             id: newId,
             position,
             data: { label: `Точка ${newId}` },
+
             type: 'default',
         };
 
         setNodes((nds) => nds.concat(newNode));
-    }, [reactFlowInstance, setNodes]);
+
+    }, [reactFlowInstance, nodes, setNodes]);
 
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault();
         event.stopPropagation();
-        if (window.confirm(`Удалить ${node.data.label}?`)) {
-            setNodes((nds) => nds.filter((n) => n.id !== node.id));
-            setEdges((eds) => eds.filter((edge) => edge.source !== node.id && edge.target !== node.id));
-        }
-    }, [setNodes, setEdges]);
+        setDeleteTarget({ type: 'node', item: node });
+    }, []);
 
     const onEdgeContextMenu = useCallback((event, edge) => {
         event.preventDefault();
         event.stopPropagation();
-        if (window.confirm(`Удалить связь весом ${edge.label}?`)) {
-            setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+        setDeleteTarget({ type: 'edge', item: edge });
+    }, []);
+
+    const confirmDelete = useCallback(() => {
+        if (!deleteTarget) return;
+
+        if (deleteTarget.type === 'node') {
+            const nodeId = deleteTarget.item.id;
+            setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+            setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+        } else if (deleteTarget.type === 'edge') {
+            const edgeId = deleteTarget.item.id;
+            setEdges((eds) => eds.filter((e) => e.id !== edgeId));
         }
-    }, [setEdges]);
+
+        setDeleteTarget(null);
+    }, [deleteTarget, setNodes, setEdges]);
+
+    const cancelDelete = useCallback(() => {
+        setDeleteTarget(null);
+    }, []);
 
     return (
         <div
@@ -255,8 +275,8 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 {isWeightModalOpen && (
                     <div className="modal-overlay">
                         <div className="modal-content">
-                            <h4>Новая связь</h4>
-                            <p>Введите вес (расстояние) для связи:</p>
+                            <h4>Новий зв'язок</h4>
+                            <p>Введіть вагу (відстань) для зв'язку:</p>
 
                             <input
                                 type="number"
@@ -264,22 +284,46 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                                 value={weightInputValue}
                                 onChange={(e) => setWeightInputValue(e.target.value)}
                                 onKeyDown={handleKeyDown}
-                                placeholder="Например: 15"
+                                placeholder="Наприклад: 15"
                                 className="weight-popup-input"
                             />
-
+                            {weightError && (
+                                <span className="weight-error-text">{weightError}</span>
+                            )}
                             <div className="modal-actions">
                                 <button className="btn-cancel" onClick={handleCancelConnection}>
-                                    Отмена
+                                    Відміна
                                 </button>
                                 <button className="btn-confirm" onClick={handleConfirmConnection}>
-                                    Сохранить
+                                    Зберегти
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
             </ReactFlow>
+            {deleteTarget && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h4>Підтвердження видалення</h4>
+                        <p>
+                            {deleteTarget.type === 'node'
+                                ? `Видалити "${deleteTarget.item.data?.label}" та всі пов'язані з нею лінії?`
+                                : `Видалити зв'язок вагою ${deleteTarget.item.label || '0'}?`
+                            }
+                        </p>
+
+                        <div className="modal-actions">
+                            <button className="btn-cancel" onClick={cancelDelete}>
+                                Відміна
+                            </button>
+                            <button className="btn-confirm error-btn" onClick={confirmDelete}>
+                                Видалити
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

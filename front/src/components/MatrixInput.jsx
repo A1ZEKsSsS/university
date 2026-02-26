@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
     const [viewType, setViewType] = useState('table');
+    const [nodeToDelete, setNodeToDelete] = useState(null);
 
     const findEdge = (source, target) => {
         return edges.find(e => e.source === source && e.target === target);
@@ -18,16 +19,27 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         const newNode = {
             id: newId,
             type: 'default',
-            data: { label: `T-${newId}` },
+            data: { label: `Точка ${newId}` },
             position: { x: 100 + (nodes.length * 50), y: 100 + (nodes.length * 50) },
         };
         setNodes((nds) => [...nds, newNode]);
     };
 
     const handleRemoveNode = (nodeId) => {
-        if (!window.confirm('Удалить точку и все её связи?')) return;
-        setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-        setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+        setNodeToDelete(nodeId);
+    };
+
+    const confirmDeleteNode = () => {
+        if (!nodeToDelete) return;
+
+        setNodes((nds) => nds.filter((n) => n.id !== nodeToDelete));
+        setEdges((eds) => eds.filter((e) => e.source !== nodeToDelete && e.target !== nodeToDelete));
+
+        setNodeToDelete(null);
+    };
+
+    const cancelDeleteNode = () => {
+        setNodeToDelete(null);
     };
 
     const ARROW_CONFIG = {
@@ -125,25 +137,25 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                         className={`switch-btn ${viewType === 'table' ? 'active' : ''}`}
                         onClick={() => setViewType('table')}
                     >
-                        Таблицы
+                        Таблиці
                     </button>
                     <button
                         className={`switch-btn ${viewType === 'cards' ? 'active' : ''}`}
                         onClick={() => setViewType('cards')}
                     >
-                        Карточки
+                        Картки
                     </button>
                 </div>
 
                 <button className="matrix-add-btn" onClick={handleAddNode}>
-                    + Точка
+                    + Додати точку
                 </button>
             </div>
 
             {viewType === 'table' && (
                 <div className="tables-wrapper">
                     <div className="matrix-card">
-                        <h4>Связи</h4>
+                        <h4>Зв'язки</h4>
                         <div className="table-scroll-area">
                             <table className="data-table">
                                 <thead>
@@ -185,7 +197,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                     </div>
 
                     <div className="matrix-card">
-                        <h4>Веса</h4>
+                        <h4>Ваги</h4>
                         <div className="table-scroll-area">
                             <table className="data-table">
                                 <thead>
@@ -232,7 +244,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                     {nodes.map(source => (
                         <div key={source.id} className="mobile-card">
                             <div className="mobile-card-header">
-                                <span>От: <b>{source.data.label}</b></span>
+                                <span>Від: <b>{source.data.label}</b></span>
                                 <button className="remove-node-btn" onClick={() => handleRemoveNode(source.id)}>&times;</button>
                             </div>
 
@@ -243,7 +255,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
 
                                     return (
                                         <div key={target.id} className={`mobile-row ${isActive ? 'active' : ''}`}>
-                                            <span className="target-label">к {target.data.label}</span>
+                                            <span className="target-label">до {target.data.label}</span>
 
                                             <div className="mobile-controls">
                                                 <button
@@ -259,7 +271,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                                     disabled={!isActive}
                                                     value={edge ? (edge.label || '') : ''}
                                                     onChange={(e) => handleWeightChange(source.id, target.id, e.target.value)}
-                                                    placeholder="Вес"
+                                                    placeholder="Вага"
                                                 />
                                             </div>
                                         </div>
@@ -268,6 +280,25 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+            {nodeToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h4>Підтвердження видалення</h4>
+                        <p>
+                            Видалити точку <b>{nodes.find(n => n.id === nodeToDelete)?.data?.label}</b> та всі пов'язані з нею лінії?
+                        </p>
+
+                        <div className="modal-actions">
+                            <button className="btn-cancel" onClick={cancelDeleteNode}>
+                                Відміна
+                            </button>
+                            <button className="btn-confirm error-btn" onClick={confirmDeleteNode}>
+                                Видалити
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

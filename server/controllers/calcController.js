@@ -17,8 +17,8 @@ class CalcController {
             return res.json(result);
 
         } catch (error) {
-            console.error("Ошибка в контроллере:", error);
-            return res.status(500).json({ message: "Ошибка сервера при расчете" });
+            console.error("Помилка в контролері:", error);
+            return res.status(500).json({ message: "Помилка сервера при розрахунку" });
         }
     }
 }
