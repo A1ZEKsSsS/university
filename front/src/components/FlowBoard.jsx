@@ -33,6 +33,9 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     const [weightInputValue, setWeightInputValue] = useState('');
     const [weightError, setWeightError] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isNodeRenameModalOpen, setIsNodeRenameModalOpen] = useState(false);
+    const [nodeToRename, setNodeToRename] = useState(null);
+    const [nodeNameInputValue, setNodeNameInputValue] = useState('');
 
     const edgeTypes = useMemo(() => ({
         smart: SmartBendableEdge,
@@ -241,6 +244,8 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     const cancelDelete = useCallback(() => {
         setDeleteTarget(null);
     }, []);
+
+
 
     return (
         <div

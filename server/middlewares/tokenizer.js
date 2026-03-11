@@ -4,7 +4,6 @@ const checkToken = (req, res, next, discard) => {
     if (req.headers && req.headers.authorization) {
         var parts = req.headers.authorization.split(" ");
         var token = parts[1];
-
         jwt.verify(token, process.env.JWT_SECRET, (error, userinfo) => {
             if (error) {
                 return res.status(401).send({ error: "Invalid AccessToken" });

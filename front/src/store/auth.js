@@ -41,6 +41,7 @@ class Auth {
         this.isAuth = true;
         this.token = token;
         localStorage.setItem('token', token);
+        axios.defaults.headers.authorization = `Bearer ${token}`;
     }
 
     unauthorize() {

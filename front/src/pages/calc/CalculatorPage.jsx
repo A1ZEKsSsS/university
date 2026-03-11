@@ -35,6 +35,11 @@ const CalculatorContent = () => {
 
     const [edgeMenu, setEdgeMenu] = useState(null);
 
+    const [savedGraphs, setSavedGraphs] = useState([]);
+    const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
+    const [graphModalMode, setGraphModalMode] = useState('load');
+    const [graphNameInput, setGraphNameInput] = useState('');
+
     const ARROW_CONFIG = {
         type: 'arrowclosed',
         width: 20,
@@ -80,7 +85,7 @@ const CalculatorContent = () => {
 
                 return {
                     ...edge,
-                    type: 'smoothstep',
+                    type: 'bendable',
                     pathOptions: { borderRadius: 20 },
                     interactionWidth: 25,
 
@@ -107,6 +112,70 @@ const CalculatorContent = () => {
             })
         );
     }, [highlightedPaths, setEdges]);
+
+    const openSaveModal = () => {
+        setGraphModalMode('save');
+        setGraphNameInput('');
+        setIsGraphModalOpen(true);
+    };
+
+    const openLoadModal = async () => {
+        setGraphModalMode('load');
+        setIsGraphModalOpen(true);
+        try {
+            const response = await axios.get('/api/graphs');
+            setSavedGraphs(response.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const submitSaveGraph = async () => {
+        if (!graphNameInput.trim()) return;
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            console.log(token)
+            await axios.post('/api/graphs/create', {
+                name: graphNameInput,
+                nodes,
+                edges,
+                resultData
+            });
+            setIsGraphModalOpen(false);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const loadGraph = async (id) => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get(`/api/graphs/${id}`);
+            const graph = response.data;
+            setNodes(graph.nodes || []);
+            setEdges(graph.edges || []);
+            setResultData(graph.resultData || null);
+            setHighlightedPaths([]);
+            setIsGraphModalOpen(false);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const deleteGraph = async (id) => {
+        try {
+            await axios.delete(`/api/graphs/${id}`);
+            setSavedGraphs(savedGraphs.filter(g => g._id !== id));
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     const handleCalculate = async () => {
         setError(null);
@@ -267,6 +336,8 @@ const CalculatorContent = () => {
                 onDirectionChange={handleDirectionChange}
                 onDeleteEdge={handleDeleteEdge}
                 onWeightChange={handleEdgeWeightChange}
+                onOpenSaveModal={openSaveModal}
+                onOpenLoadModal={openLoadModal}
             />
 
             <div className='flowboard-container' style={{ display: 'flex', flexDirection: 'column' }}>
@@ -452,6 +523,52 @@ const CalculatorContent = () => {
                     result={resultData}
                     onCellClick={handleCellClick}
                 />
+                {isGraphModalOpen && (
+                    <div className="modal-overlay">
+                        <div className="modal-content" style={{ width: '400px' }}>
+                            <h4>{graphModalMode === 'save' ? 'Зберегти граф' : 'Завантажити граф'}</h4>
+
+                            {graphModalMode === 'save' ? (
+                                <>
+                                    <input
+                                        type="text"
+                                        value={graphNameInput}
+                                        onChange={(e) => setGraphNameInput(e.target.value)}
+                                        placeholder="Введіть назву графа"
+                                        className="weight-input"
+                                        style={{ marginTop: '10px' }}
+                                        autoFocus
+                                    />
+                                    <div className="modal-actions" style={{ marginTop: '16px' }}>
+                                        <button className="btn-cancel" onClick={() => setIsGraphModalOpen(false)}>Скасувати</button>
+                                        <button className="btn-confirm" onClick={submitSaveGraph}>Зберегти</button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                                        {savedGraphs.length === 0 ? (
+                                            <p style={{ textAlign: 'center', color: '#64748b' }}>Немає збережених графів</p>
+                                        ) : (
+                                            savedGraphs.map(graph => (
+                                                <div key={graph._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                                    <span style={{ fontWeight: 500, color: '#334155' }}>{graph.name}</span>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <button onClick={() => loadGraph(graph._id)} style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Відкрити</button>
+                                                        <button onClick={() => deleteGraph(graph._id)} style={{ padding: '6px 12px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', cursor: 'pointer' }}>🗑️</button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    <div className="modal-actions" style={{ marginTop: '16px' }}>
+                                        <button className="btn-cancel" onClick={() => setIsGraphModalOpen(false)}>Закрити</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

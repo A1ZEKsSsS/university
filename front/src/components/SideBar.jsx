@@ -6,7 +6,7 @@ import IconClose from './img/close.png';
 import IconMenu from './img/menu.png';
 import { MarkerType } from 'reactflow';
 
-const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, onDeleteEdge, onWeightChange }) => {
+const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, onDeleteEdge, onWeightChange, onOpenSaveModal, onOpenLoadModal }) => {
     const navigate = useNavigate();
     const { auth } = useStore();
 
@@ -158,6 +158,15 @@ const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, o
                 )}
 
                 <div className="spacer"></div>
+
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                    <button className="btn history-btn" style={{ flex: 1, margin: 0 }} onClick={onOpenSaveModal}>
+                        💾 Зберегти
+                    </button>
+                    <button className="btn history-btn" style={{ flex: 1, margin: 0 }} onClick={onOpenLoadModal}>
+                        📂 Відкрити
+                    </button>
+                </div>
 
                 <hr className="divider" />
 

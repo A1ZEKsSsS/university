@@ -22,22 +22,22 @@ const ResultPanel = ({ result, onCellClick }) => {
         }}>
             <h3 style={{ marginTop: 0, marginBottom: '10px' }}>Матрица кратчайших путей</h3>
             <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
-                * Кликните на ячейку с числом, чтобы увидеть маршрут на графе.
+                * Клацніть на комірку з числом, щоб побачити маршрут на графі.
             </p>
 
             <table style={{ borderCollapse: 'collapse', width: '100%', textAlign: 'center' }}>
                 <thead>
                     <tr>
-                        <th style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6' }}>From \ To</th>
+                        <th style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>Вiд \ До</th>
                         {headers.map(h => (
-                            <th key={h} style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6' }}>{h}</th>
+                            <th key={h} style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>{h}</th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
                     {distMatrix.map((row, i) => (
                         <tr key={i}>
-                            <td style={{ fontWeight: 'bold', background: '#f8f9fa', border: '1px solid #dee2e6' }}>{i + 1}</td>
+                            <td style={{ fontWeight: 'bold', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>{i + 1}</td>
 
                             {row.map((val, j) => {
                                 const isInf = val > 1000000;
