@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { capitalize } from "../utils/helpers.js";
 import User from "../models/user.js";
+import Graph from "../models/graph.js";
 import {
     sendVerifyMail,
     sendWelcomeEmail,
@@ -233,6 +234,54 @@ const resetPasswordConfirm = async (req, res) => {
     res.send({ message: "Password successfully reset" });
 };
 
+const ensureAdmin = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user?.id).select('role').lean();
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ message: 'Forbidden: admin only' });
+        }
+        next();
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const getUsers = async (req, res) => {
+    try {
+        const users = await User.find({}, 'name email phone role').sort({ email: 1 }).lean();
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const toDelete = await User.findById(userId);
+
+        if (!toDelete) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (req.user?.id === userId) {
+            return res.status(400).json({ message: 'Cannot delete self' });
+        }
+
+        await Graph.deleteMany({ user: userId });
+        await User.deleteOne({ _id: userId });
+
+        res.status(200).json({ message: 'User and linked graphs deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 const userInfo = async (req, res) => {
     const { id, type } = req.user;
 
@@ -262,5 +311,8 @@ export default {
     signUpValidate,
     resetPasswordStart,
     resetPasswordConfirm,
+    getUsers,
+    deleteUser,
+    ensureAdmin,
     userInfo,
 };

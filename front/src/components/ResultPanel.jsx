@@ -1,13 +1,18 @@
 import React from 'react';
 
-const ResultPanel = ({ result, onCellClick }) => {
+const ResultPanel = ({ result, onCellClick, nodes }) => {
 
     const distMatrix = result?.dist || (Array.isArray(result) ? result : null);
 
     if (!distMatrix) return null;
 
     const size = distMatrix.length;
-    const headers = Array.from({ length: size }, (_, i) => i + 1);
+    const headers = Array.from({ length: size }, (_, i) => i);
+
+    const getNodeName = (index) => {
+        if (!nodes || !nodes[index]) return `Точка ${index + 1}`;
+        return nodes[index].data?.label || `Точка ${index + 1}`;
+    };
 
     return (
         <div style={{
@@ -29,15 +34,19 @@ const ResultPanel = ({ result, onCellClick }) => {
                 <thead>
                     <tr>
                         <th style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>Вiд \ До</th>
-                        {headers.map(h => (
-                            <th key={h} style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>{h}</th>
+                        {headers.map(i => (
+                            <th key={i} style={{ padding: '8px', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>
+                                {getNodeName(i)}
+                            </th>
                         ))}
                     </tr>
                 </thead>
                 <tbody>
                     {distMatrix.map((row, i) => (
                         <tr key={i}>
-                            <td style={{ fontWeight: 'bold', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>{i + 1}</td>
+                            <td style={{ fontWeight: 'bold', background: '#f8f9fa', border: '1px solid #dee2e6', color: '#000' }}>
+                                {getNodeName(i)}
+                            </td>
 
                             {row.map((val, j) => {
                                 const isInf = val > 1000000;

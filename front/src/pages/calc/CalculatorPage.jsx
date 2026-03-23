@@ -83,11 +83,20 @@ const CalculatorContent = () => {
                     }
                 }
 
+                const dirCode = edge.data?.directionCode || 1;
+                const isBiDir = dirCode === 1;
+                const isForward = dirCode === 3;
+                const isReverse = dirCode === 2;
+
                 return {
                     ...edge,
-                    type: 'bendable',
+                    type: edge.type || 'bendable', // Защита от сброса изгибов
                     pathOptions: { borderRadius: 20 },
                     interactionWidth: 25,
+
+                    // Жестко фиксируем стрелки и их цвета
+                    markerEnd: (isBiDir || isForward) ? { type: 'arrowclosed', width: 20, height: 20, color: strokeColor } : undefined,
+                    markerStart: (isBiDir || isReverse) ? { type: 'arrowclosed', width: 20, height: 20, color: strokeColor, orient: 'auto-start-reverse' } : undefined,
 
                     style: {
                         ...edge.style,
@@ -149,18 +158,33 @@ const CalculatorContent = () => {
             setIsLoading(false);
         }
     };
-
     const loadGraph = async (id) => {
         setIsLoading(true);
         try {
-            const response = await axios.get(`/api/graphs/${id}`);
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`/api/graphs/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             const graph = response.data;
             setNodes(graph.nodes || []);
-            setEdges(graph.edges || []);
+
+            const restoredEdges = (graph.edges || []).map(edge => {
+                const dirCode = edge.data?.directionCode || 1;
+                const isBiDir = dirCode === 1;
+                const isForward = dirCode === 3;
+                const isReverse = dirCode === 2;
+
+                return {
+                    ...edge,
+                    markerEnd: (isBiDir || isForward) ? { type: 'arrowclosed', width: 20, height: 20, color: '#b1b1b7' } : undefined,
+                    markerStart: (isBiDir || isReverse) ? { type: 'arrowclosed', width: 20, height: 20, color: '#b1b1b7', orient: 'auto-start-reverse' } : undefined,
+                };
+            });
+
+            setEdges(restoredEdges);
             setResultData(graph.resultData || null);
             setHighlightedPaths([]);
             setIsGraphModalOpen(false);
-
         } catch (error) {
             console.error(error);
         } finally {
@@ -522,6 +546,7 @@ const CalculatorContent = () => {
                 <ResultPanel
                     result={resultData}
                     onCellClick={handleCellClick}
+                    nodes={nodes}
                 />
                 {isGraphModalOpen && (
                     <div className="modal-overlay">

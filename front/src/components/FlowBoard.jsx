@@ -100,25 +100,39 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         event.preventDefault();
         event.stopPropagation();
 
-        const label = prompt('Введіть нову назву точки:', node.data.label);
+        setNodeToRename(node);
+        setNodeNameInputValue(node.data.label || '');
+        setIsNodeRenameModalOpen(true);
+    }, []);
 
-        if (label === null || label.trim() === '') return;
+    const handleCancelNodeRename = () => {
+        setIsNodeRenameModalOpen(false);
+        setNodeToRename(null);
+    };
+
+    const handleConfirmNodeRename = () => {
+        if (!nodeToRename || !nodeNameInputValue.trim()) return;
 
         setNodes((nds) =>
             nds.map((n) => {
-                if (n.id === node.id) {
-                    return {
-                        ...n,
-                        data: {
-                            ...n.data,
-                            label: label,
-                        },
-                    };
+                if (n.id === nodeToRename.id) {
+                    return { ...n, data: { ...n.data, label: nodeNameInputValue.trim() } };
                 }
                 return n;
             })
         );
-    }, [setNodes]);
+
+        setIsNodeRenameModalOpen(false);
+        setNodeToRename(null);
+    };
+
+    const handleNodeRenameKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleConfirmNodeRename();
+        } else if (e.key === 'Escape') {
+            handleCancelNodeRename();
+        }
+    };
 
     const onConnect = useCallback((params) => {
 
@@ -307,6 +321,27 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                     </div>
                 )}
             </ReactFlow>
+            {isNodeRenameModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h4>Изменить название точки</h4>
+                        <p>Введите новое название:</p>
+                        <input
+                            type="text"
+                            autoFocus
+                            value={nodeNameInputValue}
+                            onChange={(e) => setNodeNameInputValue(e.target.value)}
+                            onKeyDown={handleNodeRenameKeyDown}
+                            placeholder="Например: Точка 1"
+                            className="weight-popup-input"
+                        />
+                        <div className="modal-actions">
+                            <button className="btn-cancel" onClick={handleCancelNodeRename}>Отмена</button>
+                            <button className="btn-confirm" onClick={handleConfirmNodeRename}>Сохранить</button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {deleteTarget && (
                 <div className="modal-overlay">
                     <div className="modal-content">

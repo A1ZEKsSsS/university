@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require("mongoose");
 const routes = require("./routes");
+const { default: seedAdmin } = require('./utils/adminSeed');
 
 
 const app = express();
@@ -30,6 +31,8 @@ const connect = async () => {
 const start = async () => {
     try {
         await connect();
+
+        await seedAdmin();
 
         app.listen(PORT, () => {
             console.log(`Сервер запущено на http://localhost:${PORT}`);

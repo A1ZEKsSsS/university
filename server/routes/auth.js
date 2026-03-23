@@ -5,6 +5,8 @@ const auth = require("../controllers/auth");
 const Router = express.Router();
 
 Router.get("/user", tokenAccess, auth.default.userInfo);
+Router.get("/users", tokenAccess, auth.default.ensureAdmin, auth.default.getUsers);
+Router.delete("/users/:id", tokenAccess, auth.default.ensureAdmin, auth.default.deleteUser);
 Router.post("/signin", auth.default.signIn);
 Router.post("/signin-email-code", auth.default.signInEmailCode);
 Router.post("/confirm-signin-email", auth.default.confirmSignInEmail);
