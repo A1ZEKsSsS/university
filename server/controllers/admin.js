@@ -55,6 +55,37 @@ const adminLogin = async (req, res) => {
     }
 };
 
+const getUsers = async (req, res) => {
+    try {
+        const users = await User.find({ role: { $ne: 'admin' } }).select('-password');
+        return res.status(200).json({ users });
+    } catch (error) {
+        console.error('Error in getUsers:', error);
+        return res.status(500).json({ error: 'Internal server error while fetching users' });
+    }
+};
+
+const deleteUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await user.remove();
+
+        return res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error in deleteUser:', error);
+        return res.status(500).json({ error: 'Internal server error during user deletion' });
+    }
+};
+
 module.exports = {
-    adminLogin
+    adminLogin,
+    getUsers,
+    deleteUser
 };

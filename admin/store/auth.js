@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import axios from "axios";
 
 class Auth {
@@ -37,20 +37,28 @@ class Auth {
         }
     }
 
-    authorize(token) {
+    authorize(token, user) {
         this.isAuth = true;
         this.token = token;
+        if (user) {
+            this.user = {
+                id: user.id || user._id || '',
+                name: user.name || '',
+                email: user.email || '',
+            };
+        }
         localStorage.setItem('token', token);
-        axios.defaults.headers.authorization = `Bearer ${token}`;
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
     unauthorize() {
         this.isAuth = false;
         this.token = null;
+        this.user = { id: '', name: '', email: '' };
         localStorage.removeItem('token');
+        delete axios.defaults.headers.common['Authorization'];
     }
 }
-
 
 const auth = new Auth();
 export default auth;

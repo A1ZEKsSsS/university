@@ -24,8 +24,10 @@ const checkToken = (req, res, next, discard) => {
 
 const tokenPipe = (req, res, next) => checkToken(req, res, next, false);
 const tokenAccess = (req, res, next) => checkToken(req, res, next, true);
+const isAdmin = (req, res, next) => checkType(req, res, next, "admin");
 
 module.exports = {
     tokenPipe,
     tokenAccess,
+    isAdmin
 };
