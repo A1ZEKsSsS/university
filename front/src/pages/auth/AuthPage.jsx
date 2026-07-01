@@ -149,7 +149,7 @@ const AuthPage = ({ onLoginSuccess }) => {
 
         } catch (e) {
             console.error(e);
-            const msg = e.response?.data?.message || e.message || 'Сталася помилка';
+            const msg = e.response?.data?.error || e.message || 'Сталася помилка';
             setError(msg);
         } finally {
             setIsLoading(false);

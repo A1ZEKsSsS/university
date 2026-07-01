@@ -35,15 +35,8 @@ const signIn = async (req, res) => {
 
     user = await User.findOne({ email }, "+password").lean();
 
-
     if (!user) {
-        return res.status(400).send({ error: `${capitalize(type)} not found` });
-    }
-
-    if (!user.password) {
-        return res
-            .status(400)
-            .send({ error: "Auth is allowed only through Google for you" });
+        return res.status(400).send({ error: `Такого користувача не знайдено` });
     }
 
     const isValidPass = await bcrypt.compare(password, user.password);

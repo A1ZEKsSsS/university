@@ -3,19 +3,18 @@ import ReactFlow, {
     Controls,
     Background,
     addEdge,
-    useReactFlow
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import SmartEdge from './SmartEdge';
-import CustomEdge from './CustomEdge';
-import SmartStepEdge from './SmartStepEdge';
 import SmartNode from './SmartNode';
 import SmartBendableEdge from './BendableEdge';
+// import './FlowBoard.css';
 
+// --- Константи поза компонентом ---
+
+const DEFAULT_EDGE_COLOR = '#b1b1b7';
 
 const defaultEdgeOptions = {
-    // interactionWidth: 25,
-    style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' },
+    style: { strokeWidth: 2, stroke: DEFAULT_EDGE_COLOR, cursor: 'pointer' },
     type: 'bendable',
     pathOptions: { borderRadius: 20 },
     labelShowBg: true,
@@ -25,14 +24,25 @@ const defaultEdgeOptions = {
     labelStyle: { fontSize: 12, fontWeight: 700, fill: '#495057' },
 };
 
+// Генератор унікальних ID (стійкий до швидкого створення)
+const makeId = (prefix = 'e') => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return `${prefix}-${crypto.randomUUID()}`;
+    }
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+};
+
 const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesChange, onEdgeClick }) => {
     const reactFlowWrapper = useRef(null);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
+
     const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
     const [pendingConnection, setPendingConnection] = useState(null);
     const [weightInputValue, setWeightInputValue] = useState('');
     const [weightError, setWeightError] = useState('');
+
     const [deleteTarget, setDeleteTarget] = useState(null);
+
     const [isNodeRenameModalOpen, setIsNodeRenameModalOpen] = useState(false);
     const [nodeToRename, setNodeToRename] = useState(null);
     const [nodeNameInputValue, setNodeNameInputValue] = useState('');
@@ -47,12 +57,14 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         smart: SmartNode,
     }), []);
 
+    // --- Перерозподіл handles для рівномірного виходу з вузла ---
+    // Фіксовано: слухаємо весь edges, а не лише .length
     useEffect(() => {
         setEdges((eds) => {
             const outgoingMap = {};
             const incomingMap = {};
 
-            eds.forEach(edge => {
+            eds.forEach((edge) => {
                 if (!outgoingMap[edge.source]) outgoingMap[edge.source] = [];
                 outgoingMap[edge.source].push(edge);
 
@@ -62,18 +74,15 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
 
             let hasChanges = false;
 
-            const newEdges = eds.map(edge => {
-
+            const newEdges = eds.map((edge) => {
                 const sourceGroup = outgoingMap[edge.source];
-
                 sourceGroup.sort((a, b) => a.target.localeCompare(b.target));
-                const sourceIndex = sourceGroup.findIndex(e => e.id === edge.id);
+                const sourceIndex = sourceGroup.findIndex((e) => e.id === edge.id);
                 const newSourceHandle = `s-${sourceIndex}`;
 
                 const targetGroup = incomingMap[edge.target];
-
                 targetGroup.sort((a, b) => a.source.localeCompare(b.source));
-                const targetIndex = targetGroup.findIndex(e => e.id === edge.id);
+                const targetIndex = targetGroup.findIndex((e) => e.id === edge.id);
                 const newTargetHandle = `t-${targetIndex}`;
 
                 if (edge.sourceHandle === newSourceHandle && edge.targetHandle === newTargetHandle) {
@@ -90,11 +99,10 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
 
             return hasChanges ? newEdges : eds;
         });
-    }, [
-        edges.length,
-        setEdges
-    ]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [edges]);
 
+    // --- Перейменування вузла ---
 
     const onNodeDoubleClick = useCallback((event, node) => {
         event.preventDefault();
@@ -127,106 +135,119 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
     };
 
     const handleNodeRenameKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            handleConfirmNodeRename();
-        } else if (e.key === 'Escape') {
-            handleCancelNodeRename();
-        }
+        if (e.key === 'Enter') handleConfirmNodeRename();
+        else if (e.key === 'Escape') handleCancelNodeRename();
     };
 
-    const onConnect = useCallback((params) => {
+    // --- Створення ребра ---
+    // Фіксовано: ребро створюється ОДИН раз, лише після підтвердження у модалці.
+    // Раніше onConnect створював undefined-ребро з ReferenceError на `weight`,
+    // а потім handleConfirmConnection додавав друге — виходило 2 ребра.
 
+    const onConnect = useCallback((params) => {
         setPendingConnection(params);
         setWeightInputValue('');
         setWeightError('');
         setIsWeightModalOpen(true);
-
-        const newEdge = {
-            ...params,
-            id: `e${params.source}-${params.target}-${Date.now()}`,
-            label: weight,
-            type: 'bendable',
-            pathOptions: { borderRadius: 20 },
-            data: { offsetX: 0, offsetY: 0, directionCode: 1 },
-            markerEnd: { type: 'arrowclosed' },
-            markerStart: { type: 'arrowclosed' },
-            style: { strokeWidth: 2, stroke: '#b1b1b7' },
-        };
-        setEdges((eds) => addEdge(newEdge, eds));
-    }, [setEdges]);
+    }, []);
 
     const handleCancelConnection = () => {
         setIsWeightModalOpen(false);
         setPendingConnection(null);
+        setWeightError('');
     };
 
     const handleConfirmConnection = () => {
         const weight = parseInt(weightInputValue, 10);
 
-        if (isNaN(weight) || weight < 0) {
+        if (Number.isNaN(weight) || weight < 0) {
             setWeightError('Введіть коректне число (≥ 0)');
             return;
         }
 
+        if (!pendingConnection) return;
+
         const newEdge = {
             ...pendingConnection,
-            id: `e${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
+            id: makeId('e'),
             label: weight.toString(),
-            type: 'bendable',
-            pathOptions: { borderRadius: 20 },
             data: {
                 offsetX: 0,
                 offsetY: 0,
                 directionCode: 1,
-                weight: weight
+                weight,
             },
-            markerEnd: { type: 'arrowclosed' },
-            markerStart: { type: 'arrowclosed' },
-            style: { strokeWidth: 2, stroke: '#b1b1b7' },
+            markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: DEFAULT_EDGE_COLOR },
+            markerStart: {
+                type: 'arrowclosed',
+                width: 20,
+                height: 20,
+                color: DEFAULT_EDGE_COLOR,
+                orient: 'auto-start-reverse',
+            },
+            // type / style / pathOptions наслідуються з defaultEdgeOptions
         };
 
         setEdges((eds) => addEdge(newEdge, eds));
 
         setIsWeightModalOpen(false);
         setPendingConnection(null);
+        setWeightError('');
     };
 
     const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            handleConfirmConnection();
-        } else if (e.key === 'Escape') {
-            handleCancelConnection();
-        }
+        if (e.key === 'Enter') handleConfirmConnection();
+        else if (e.key === 'Escape') handleCancelConnection();
     };
 
-    const handleWrapperDoubleClick = useCallback((event) => {
-        if (!reactFlowWrapper.current || !reactFlowInstance) return;
+    // Скидаємо помилку при зміні вводу
+    const handleWeightInputChange = (e) => {
+        setWeightInputValue(e.target.value);
+        if (weightError) setWeightError('');
+    };
 
-        if (event.target.closest('.react-flow__node') || event.target.closest('.react-flow__edge')) {
-            return;
-        }
+    // --- Створення вузла по подвійному кліку ---
+    // Фіксовано: ID через makeId, щоб не було дублів при завантаженні графа
+    // з сервера (де ID можуть бути у форматі uuid).
 
-        const position = reactFlowInstance.screenToFlowPosition({
-            x: event.clientX,
-            y: event.clientY,
-        });
+    const handleWrapperDoubleClick = useCallback(
+        (event) => {
+            if (!reactFlowWrapper.current || !reactFlowInstance) return;
 
-        const ids = nodes.map(n => parseInt(n.id, 10)).filter(n => !isNaN(n));
-        const maxId = ids.length > 0 ? Math.max(...ids) : 0;
+            if (
+                event.target.closest('.react-flow__node') ||
+                event.target.closest('.react-flow__edge')
+            ) {
+                return;
+            }
 
-        const newId = (maxId + 1).toString();
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
 
-        const newNode = {
-            id: newId,
-            position,
-            data: { label: `Точка ${newId}` },
+            // Красива нумерація для label: беремо максимальний номер з label виду «Точка N»
+            const existingNumbers = nodes
+                .map((n) => {
+                    const match = (n.data?.label || '').match(/Точка\s+(\d+)/);
+                    return match ? parseInt(match[1], 10) : NaN;
+                })
+                .filter((n) => !Number.isNaN(n));
+            const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
 
-            type: 'default',
-        };
+            const newNode = {
+                id: makeId('n'),
+                position,
+                data: { label: `Точка ${nextNumber}` },
+                type: 'default',
+            };
 
-        setNodes((nds) => nds.concat(newNode));
+            setNodes((nds) => nds.concat(newNode));
+        },
+        [reactFlowInstance, nodes, setNodes]
+    );
 
-    }, [reactFlowInstance, nodes, setNodes]);
+    // --- Контекстне меню: видалення ---
 
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault();
@@ -259,12 +280,9 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         setDeleteTarget(null);
     }, []);
 
-
-
     return (
         <div
             className="flow-wrapper"
-            style={{ width: '100%', height: '100%', borderLeft: '1px solid #ccc', background: '#f8f9fa' }}
             ref={reactFlowWrapper}
             onDoubleClick={handleWrapperDoubleClick}
         >
@@ -275,11 +293,9 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onInit={setReactFlowInstance}
-
                 onNodeContextMenu={onNodeContextMenu}
                 onEdgeContextMenu={onEdgeContextMenu}
                 onEdgeClick={onEdgeClick}
-
                 onNodeDoubleClick={onNodeDoubleClick}
                 edgeTypes={edgeTypes}
                 nodeTypes={nodeTypes}
@@ -291,9 +307,10 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 <Controls />
                 <Background variant="dots" gap={20} size={1} color="#ccc" />
 
+                {/* Модалка ваги нового ребра */}
                 {isWeightModalOpen && (
-                    <div className="modal-overlay">
-                        <div className="modal-content">
+                    <div className="modal-overlay" onClick={handleCancelConnection}>
+                        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <h4>Новий зв'язок</h4>
                             <p>Введіть вагу (відстань) для зв'язку:</p>
 
@@ -301,7 +318,7 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                                 type="number"
                                 autoFocus
                                 value={weightInputValue}
-                                onChange={(e) => setWeightInputValue(e.target.value)}
+                                onChange={handleWeightInputChange}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Наприклад: 15"
                                 className="weight-popup-input"
@@ -321,36 +338,48 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                     </div>
                 )}
             </ReactFlow>
+
+            {/* Модалка перейменування вузла */}
             {isNodeRenameModalOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h4>Изменить название точки</h4>
-                        <p>Введите новое название:</p>
+                <div className="modal-overlay" onClick={handleCancelNodeRename}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h4>Змінити назву точки</h4>
+                        <p>Введіть нову назву:</p>
                         <input
                             type="text"
                             autoFocus
+                            onFocus={(e) => e.target.select()}
                             value={nodeNameInputValue}
                             onChange={(e) => setNodeNameInputValue(e.target.value)}
                             onKeyDown={handleNodeRenameKeyDown}
-                            placeholder="Например: Точка 1"
+                            placeholder="Наприклад: Точка 1"
                             className="weight-popup-input"
                         />
                         <div className="modal-actions">
-                            <button className="btn-cancel" onClick={handleCancelNodeRename}>Отмена</button>
-                            <button className="btn-confirm" onClick={handleConfirmNodeRename}>Сохранить</button>
+                            <button className="btn-cancel" onClick={handleCancelNodeRename}>
+                                Відміна
+                            </button>
+                            <button
+                                className="btn-confirm"
+                                onClick={handleConfirmNodeRename}
+                                disabled={!nodeNameInputValue.trim()}
+                            >
+                                Зберегти
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
+            {/* Модалка видалення */}
             {deleteTarget && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
+                <div className="modal-overlay" onClick={cancelDelete}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <h4>Підтвердження видалення</h4>
                         <p>
                             {deleteTarget.type === 'node'
                                 ? `Видалити "${deleteTarget.item.data?.label}" та всі пов'язані з нею лінії?`
-                                : `Видалити зв'язок вагою ${deleteTarget.item.label || '0'}?`
-                            }
+                                : `Видалити зв'язок вагою ${deleteTarget.item.label || '0'}?`}
                         </p>
 
                         <div className="modal-actions">

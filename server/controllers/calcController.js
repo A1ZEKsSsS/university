@@ -7,12 +7,12 @@ class CalcController {
             const { bind, weight, totalNodes } = req.body;
 
             if (!bind || !weight || !totalNodes) {
-                return res.status(400).json({ message: "Некорректные данные" });
+                return res.status(400).json({ message: "Некоректні дані" });
             }
 
             const result = algorithmOptim(bind, weight, totalNodes, 0);
 
-            console.log("Расчет выполнен успешно");
+            console.log("Розрахунок виконаний успішно");
             console.log(result);
             return res.json(result);
 

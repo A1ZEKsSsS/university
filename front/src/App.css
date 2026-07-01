@@ -531,7 +531,7 @@
   flex-direction: column;
   gap: 24px;
   flex: 1;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 @media (min-width: 1200px) {
@@ -1024,4 +1024,618 @@
   text-decoration: none;
   font-weight: 500;
   cursor: pointer;
+}
+
+/* ============================================
+   CalculatorPage.css
+   ============================================ */
+
+/* ===== Верхняя панель (Граф / Таблиця) ===== */
+
+.calc-toolbar {
+  padding: 10px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 10px;
+}
+
+.calc-tab {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: normal;
+  background-color: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #333;
+  font-family: inherit;
+  font-size: 14px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.calc-tab:hover {
+  background-color: #f1f3f5;
+}
+
+.calc-tab.is-active {
+  font-weight: bold;
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.calc-view {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.calc-view__panel {
+  height: 100%;
+}
+
+.calc-view__panel--scroll {
+  overflow: auto;
+}
+
+.calc-legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  z-index: 100;
+  min-width: 160px;
+}
+
+.calc-legend strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+}
+
+.calc-legend__item {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  color: #333;
+}
+
+.calc-legend__dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.calc-modal {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+}
+
+.calc-modal__error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.calc-modal__input {
+  margin-top: 10px;
+}
+
+.calc-modal__actions {
+  margin-top: 16px;
+}
+
+.calc-modal__list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calc-modal__empty {
+  text-align: center;
+  color: #64748b;
+  margin: 16px 0;
+}
+
+.calc-modal__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.calc-modal__item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.calc-modal__item-name {
+  font-weight: 500;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.calc-modal__item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.calc-modal__btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.calc-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calc-modal__btn--primary {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.calc-modal__btn--primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.calc-modal__btn--danger {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.calc-modal__btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* ===== Flowboard контейнер ===== */
+
+.flowboard-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   FlowBoard.css
+   ============================================ */
+
+.flow-wrapper {
+  width: 100%;
+  height: 100%;
+  border-left: 1px solid #ccc;
+  background: #f8f9fa;
+}
+
+/* ============================================
+   BendableEdge.css
+   ============================================ */
+
+/* Невидима зона кліка по ребру */
+.bendable-edge__hit {
+  cursor: pointer;
+  pointer-events: all;
+}
+
+/* Лейбл ваги */
+.bendable-edge__label {
+  position: absolute;
+  background: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  font-size: 11px;
+  font-weight: 700;
+  color: #495057;
+  pointer-events: all;
+  z-index: 100;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Синя ручка для згинання */
+.bendable-edge__handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  cursor: grab;
+  pointer-events: all;
+  z-index: 1001;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  user-select: none;
+  touch-action: none; /* важливо для pointer capture на touch-пристроях */
+  transition:
+    transform 0.1s ease,
+    background-color 0.15s ease;
+}
+
+.bendable-edge__handle:hover {
+  background: #2563eb;
+}
+
+.bendable-edge__handle:active {
+  cursor: grabbing;
+  background: #1d4ed8;
+}
+
+/* Меню вибору напрямку */
+.bendable-edge__menu {
+  position: absolute;
+  background: #ffffff;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  gap: 4px;
+  pointer-events: all;
+  z-index: 2000;
+}
+
+.bendable-edge__dir-btn {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-family: inherit;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.bendable-edge__dir-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.bendable-edge__dir-btn.is-active {
+  background: #eff6ff;
+  color: #3b82f6;
+  border-color: #bfdbfe;
+}
+
+/* ============================================
+   SmartNode.css
+   ============================================ */
+
+.smart-node {
+  background: #ffffff;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 0;
+  text-align: center;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  transition:
+    width 0.2s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  color: #1a1a1a;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.smart-node:hover {
+  border-color: #555;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.smart-node.is-selected {
+  border-color: #3b82f6;
+  box-shadow:
+    0 0 0 2px rgba(59, 130, 246, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.smart-node__label {
+  padding: 0 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Порти ===== */
+
+.smart-node__handle {
+  background: #555 !important;
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid #ffffff !important;
+}
+
+.smart-node__handle--top {
+  top: -6px !important;
+}
+
+.smart-node__handle--bottom {
+  bottom: -6px !important;
+  top: auto !important;
+}
+
+/* ============================================
+   CalculatorPage.css
+   ============================================ */
+
+.calc-toolbar {
+  padding: 10px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.calc-toolbar__group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.calc-toolbar__group + .calc-toolbar__group {
+  border-left: 1px solid #dee2e6;
+  padding-left: 16px;
+}
+
+.calc-tab {
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: normal;
+  background-color: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #333;
+  font-family: inherit;
+  font-size: 14px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+  white-space: nowrap;
+}
+
+.calc-tab:hover:not(:disabled) {
+  background-color: #f1f3f5;
+  border-color: #adb5bd;
+}
+
+.calc-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calc-tab.is-active {
+  font-weight: bold;
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.calc-tab--ghost {
+  border-color: transparent;
+  color: #6c757d;
+}
+
+.calc-tab--ghost:hover:not(:disabled) {
+  background-color: #fff;
+  border-color: #dee2e6;
+  color: #212529;
+}
+
+/* ===== Контейнер вигляду ===== */
+
+.calc-view {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.calc-view__panel {
+  height: 100%;
+}
+
+.calc-view__panel--scroll {
+  overflow: auto;
+}
+
+/* ===== Легенда маршрутів ===== */
+
+.calc-legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  z-index: 100;
+  min-width: 160px;
+}
+
+.calc-legend strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #1a1a1a;
+}
+
+.calc-legend__item {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+  color: #333;
+}
+
+.calc-legend__dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ===== Модалка ===== */
+
+.calc-modal {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+}
+
+.calc-modal__error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.calc-modal__input {
+  margin-top: 10px;
+}
+
+.calc-modal__actions {
+  margin-top: 16px;
+}
+
+.calc-modal__list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calc-modal__empty {
+  text-align: center;
+  color: #64748b;
+  margin: 16px 0;
+}
+
+.calc-modal__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.calc-modal__item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.calc-modal__item-name {
+  font-weight: 500;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.calc-modal__item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.calc-modal__btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.calc-modal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.calc-modal__btn--primary {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.calc-modal__btn--primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.calc-modal__btn--danger {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.calc-modal__btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* ===== Flowboard контейнер ===== */
+
+.flowboard-container {
+  display: flex;
+  flex-direction: column;
 }

@@ -3,24 +3,40 @@ import {
     BaseEdge,
     EdgeLabelRenderer,
     getSmoothStepPath,
-    useStore,
     useReactFlow,
-    MarkerType
+    MarkerType,
 } from 'reactflow';
+// import './BendableEdge.css';
 
-const SHIFT = 16;
+const DEFAULT_EDGE_COLOR = '#b1b1b7';
+
+// Поріг початку драгу (у пікселях). Клік без руху на drag-handle не викликає setEdges.
+const DRAG_THRESHOLD = 3;
 
 const DIRECTIONS = [
-    { code: 1, label: '↔', title: 'Двусторонняя' },
-    { code: 3, label: '→', title: 'Прямая' },
-    { code: 2, label: '←', title: 'Обратная' },
-    { code: 0, label: '—', title: 'Без стрелок' }
+    { code: 1, label: '↔', title: 'Двостороння' },
+    { code: 3, label: '→', title: 'Пряма' },
+    { code: 2, label: '←', title: 'Зворотна' },
+    { code: 0, label: '—', title: 'Без стрілок' },
 ];
+
+const buildArrowEnd = (color = DEFAULT_EDGE_COLOR) => ({
+    type: MarkerType.ArrowClosed,
+    width: 20,
+    height: 20,
+    color,
+});
+
+const buildArrowStart = (color = DEFAULT_EDGE_COLOR) => ({
+    type: MarkerType.ArrowClosed,
+    width: 20,
+    height: 20,
+    color,
+    orient: 'auto-start-reverse',
+});
 
 const SmartBendableEdge = ({
     id,
-    source,
-    target,
     sourceX,
     sourceY,
     targetX,
@@ -32,132 +48,190 @@ const SmartBendableEdge = ({
     markerStart,
     label,
     data,
-    selected
+    selected,
 }) => {
     const { setEdges, screenToFlowPosition } = useReactFlow();
     const [showMenu, setShowMenu] = useState(false);
     const menuRef = useRef(null);
 
-    const edges = useStore(useCallback((store) => store.edges, []));
-    const siblings = edges.filter(e => e.target === target && e.targetHandle === (targetPosition || null));
-    const sortedSiblings = siblings.sort((a, b) => a.source.localeCompare(b.source));
-    const index = sortedSiblings.findIndex(e => e.id === id);
-    const total = sortedSiblings.length;
+    // Тримаємо актуальні mid-координати в ref, щоб drag-handler міг читати їх без
+    // пересоздання замикання на кожному ренедері.
+    const midRef = useRef({ x: 0, y: 0 });
+    midRef.current = { x: (sourceX + targetX) / 2, y: (sourceY + targetY) / 2 };
 
-    const offset = total > 1 ? (index - (total - 1) / 2) * SHIFT : 0;
-    let finalTargetX = targetX;
-    let finalTargetY = targetY;
-
-    if (targetPosition === 'top' || targetPosition === 'bottom') {
-        finalTargetX += offset;
-    } else {
-        finalTargetY += offset;
-    }
-
-    const manualOffsetX = data?.offsetX || 0;
-    const manualOffsetY = data?.offsetY || 0;
+    const manualOffsetX = data?.offsetX ?? 0;
+    const manualOffsetY = data?.offsetY ?? 0;
     const isManuallyBent = manualOffsetX !== 0 || manualOffsetY !== 0;
 
-    const midX = (sourceX + targetX) / 2;
-    const midY = (sourceY + targetY) / 2;
+    const midX = midRef.current.x;
+    const midY = midRef.current.y;
     const controlX = midX + manualOffsetX;
     const controlY = midY + manualOffsetY;
 
-    let edgePath, labelX, labelY;
+    let edgePath;
+    let labelX;
+    let labelY;
 
     if (isManuallyBent) {
         edgePath = `M ${sourceX},${sourceY} Q ${controlX},${controlY} ${targetX},${targetY}`;
+        // Точка на квадратичній кривій Безьє при t=0.5
         const t = 0.5;
         const mt = 1 - t;
         labelX = mt * mt * sourceX + 2 * mt * t * controlX + t * t * targetX;
         labelY = mt * mt * sourceY + 2 * mt * t * controlY + t * t * targetY;
     } else {
         [edgePath, labelX, labelY] = getSmoothStepPath({
-            sourceX, sourceY, sourcePosition,
-            targetX: finalTargetX, targetY: finalTargetY, targetPosition,
+            sourceX,
+            sourceY,
+            sourcePosition,
+            targetX,
+            targetY,
+            targetPosition,
             borderRadius: 20,
         });
     }
 
+    // --- Закриття меню по кліку зовні ---
+    // Використовуємо 'click', а не 'mousedown', щоб клік по кнопці меню
+    // встиг спрацювати раніше, ніж спрацює закриття.
     useEffect(() => {
+        if (!showMenu) return undefined;
+
         const handleClickOutside = (event) => {
-            if (showMenu && menuRef.current && !menuRef.current.contains(event.target)) {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setShowMenu(false);
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('click', handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
         };
     }, [showMenu]);
 
-    const onMouseDown = useCallback((event) => {
-        event.stopPropagation();
-        event.preventDefault();
+    // --- Drag-handle: згинання ребра ---
+    // Фіксовано: pointer events + capture, threshold, rAF-троттлінг.
+    const onPointerDown = useCallback(
+        (event) => {
+            event.stopPropagation();
+            event.preventDefault();
 
-        const handleMouseMove = (moveEvent) => {
-            const flowPos = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
-            const newOffsetX = (flowPos.x - midX) * 2;
-            const newOffsetY = (flowPos.y - midY) * 2;
+            const startX = event.clientX;
+            const startY = event.clientY;
+            const targetEl = event.currentTarget;
+
+            let isDragging = false;
+            let rafId = null;
+            let pendingEvent = null;
+
+            try {
+                targetEl.setPointerCapture(event.pointerId);
+            } catch {
+                // Якщо capture не підтримується — нічого страшного
+            }
+
+            const applyMove = (moveEvent) => {
+                const flowPos = screenToFlowPosition({
+                    x: moveEvent.clientX,
+                    y: moveEvent.clientY,
+                });
+                const newOffsetX = (flowPos.x - midRef.current.x) * 2;
+                const newOffsetY = (flowPos.y - midRef.current.y) * 2;
+
+                setEdges((eds) =>
+                    eds.map((e) => {
+                        if (e.id !== id) return e;
+                        return {
+                            ...e,
+                            data: { ...e.data, offsetX: newOffsetX, offsetY: newOffsetY },
+                        };
+                    })
+                );
+            };
+
+            const handlePointerMove = (moveEvent) => {
+                if (!isDragging) {
+                    const dx = moveEvent.clientX - startX;
+                    const dy = moveEvent.clientY - startY;
+                    if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
+                        return;
+                    }
+                    isDragging = true;
+                }
+
+                pendingEvent = moveEvent;
+                if (rafId === null) {
+                    rafId = requestAnimationFrame(() => {
+                        rafId = null;
+                        if (pendingEvent) applyMove(pendingEvent);
+                    });
+                }
+            };
+
+            const handlePointerUp = () => {
+                if (rafId !== null) cancelAnimationFrame(rafId);
+                targetEl.removeEventListener('pointermove', handlePointerMove);
+                targetEl.removeEventListener('pointerup', handlePointerUp);
+                targetEl.removeEventListener('pointercancel', handlePointerUp);
+                try {
+                    targetEl.releasePointerCapture(event.pointerId);
+                } catch {
+                    // ignore
+                }
+            };
+
+            targetEl.addEventListener('pointermove', handlePointerMove);
+            targetEl.addEventListener('pointerup', handlePointerUp);
+            targetEl.addEventListener('pointercancel', handlePointerUp);
+        },
+        [id, setEdges, screenToFlowPosition]
+    );
+
+    // --- Вибір напрямку ---
+    const handleDirectionSelect = useCallback(
+        (code) => {
+            const isBiDir = code === 1;
+            const isForward = code === 3;
+            const isReverse = code === 2;
 
             setEdges((eds) =>
                 eds.map((e) => {
-                    if (e.id === id) {
-                        return { ...e, data: { ...e.data, offsetX: newOffsetX, offsetY: newOffsetY } };
-                    }
-                    return e;
+                    if (e.id !== id) return { ...e, zIndex: 0 };
+                    return {
+                        ...e,
+                        zIndex: 100,
+                        data: { ...e.data, directionCode: code },
+                        markerEnd: isBiDir || isForward ? buildArrowEnd() : undefined,
+                        markerStart: isBiDir || isReverse ? buildArrowStart() : undefined,
+                    };
                 })
             );
-        };
+            setShowMenu(false);
+        },
+        [id, setEdges]
+    );
 
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
+    // --- Скидання згину (подвійний клік по drag-handle) ---
+    const onResetBend = useCallback(
+        (event) => {
+            event.stopPropagation();
+            setEdges((eds) =>
+                eds.map((e) => {
+                    if (e.id !== id) return e;
+                    return {
+                        ...e,
+                        data: { ...e.data, offsetX: 0, offsetY: 0 },
+                    };
+                })
+            );
+        },
+        [id, setEdges]
+    );
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    }, [id, midX, midY, setEdges, screenToFlowPosition]);
-
-    const handleDirectionSelect = (code) => {
-        const isBiDir = code === 1;
-        const isForward = code === 3;
-        const isReverse = code === 2;
-
-        const ARROW_END = { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#b1b1b7' };
-        const ARROW_START = { type: MarkerType.ArrowClosed, width: 20, height: 20, color: '#b1b1b7', orient: 'auto-start-reverse' };
-
-        setEdges((eds) => eds.map((e) => {
-            if (e.id === id) {
-                return {
-                    ...e,
-                    zIndex: 100,
-                    data: { ...e.data, directionCode: code },
-                    markerEnd: (isBiDir || isForward) ? ARROW_END : undefined,
-                    markerStart: (isBiDir || isReverse) ? ARROW_START : undefined,
-                };
-            }
-            return { ...e, zIndex: 0 };
-        }));
-
-        setShowMenu(false);
-    };
-
-    const onResetBend = useCallback((event) => {
-        event.stopPropagation();
-        setEdges((eds) =>
-            eds.map((e) => {
-                if (e.id === id) {
-                    return { ...e, data: { ...e.data, offsetX: 0, offsetY: 0 } };
-                }
-                return e;
-            })
-        );
-    }, [id, setEdges]);
-
+    // --- Відкриття меню напрямків по подвійному кліку по ребру ---
     const onEdgeDoubleClick = useCallback((event) => {
         event.stopPropagation();
+        event.preventDefault();
         setShowMenu(true);
     }, []);
 
@@ -165,23 +239,24 @@ const SmartBendableEdge = ({
         <>
             <BaseEdge path={edgePath} markerStart={markerStart} markerEnd={markerEnd} style={style} />
 
+            {/* Прозора «товста» зона для кліків. Зменшено з 20 до 14 — менше перекриттів. */}
             <path
                 d={edgePath}
-                strokeWidth={20}
+                strokeWidth={14}
                 stroke="transparent"
                 fill="none"
                 onDoubleClick={onEdgeDoubleClick}
-                style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                className="bendable-edge__hit"
             />
 
             {label && (
                 <EdgeLabelRenderer>
-                    <div style={{
-                        position: 'absolute', transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 14}px)`,
-                        background: '#fff', padding: '2px 5px', borderRadius: '4px',
-                        border: '1px solid #dee2e6', fontSize: '11px', fontWeight: '700',
-                        color: '#495057', pointerEvents: 'all', zIndex: 100
-                    }}>
+                    <div
+                        className="bendable-edge__label"
+                        style={{
+                            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 14}px)`,
+                        }}
+                    >
                         {label}
                     </div>
                 </EdgeLabelRenderer>
@@ -190,14 +265,12 @@ const SmartBendableEdge = ({
             {selected && !showMenu && (
                 <EdgeLabelRenderer>
                     <div
-                        onMouseDown={onMouseDown}
+                        onPointerDown={onPointerDown}
                         onDoubleClick={onResetBend}
+                        className="bendable-edge__handle"
+                        title="Перетягніть, щоб зігнути. Подвійний клік — скинути"
                         style={{
-                            position: 'absolute',
-                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-                            width: '14px', height: '14px', background: '#3b82f6', borderRadius: '50%',
-                            border: '2px solid white', cursor: 'grab', pointerEvents: 'all', zIndex: 1001,
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)', userSelect: 'none'
+                            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
                         }}
                     />
                 </EdgeLabelRenderer>
@@ -207,43 +280,27 @@ const SmartBendableEdge = ({
                 <EdgeLabelRenderer>
                     <div
                         ref={menuRef}
+                        className="bendable-edge__menu"
                         style={{
-                            position: 'absolute',
-                            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 45}px)`,
-                            background: 'white',
-                            padding: '4px',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            border: '1px solid #e2e8f0',
-                            display: 'flex',
-                            gap: '4px',
-                            pointerEvents: 'all',
-                            zIndex: 2000
+                            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 45}px)`,
                         }}
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        {DIRECTIONS.map((dir) => (
-                            <button
-                                key={dir.code}
-                                onClick={() => handleDirectionSelect(dir.code)}
-                                title={dir.title}
-                                style={{
-                                    border: '1px solid #e2e8f0',
-                                    background: data?.directionCode === dir.code ? '#eff6ff' : 'white',
-                                    color: data?.directionCode === dir.code ? '#3b82f6' : '#64748b',
-                                    borderRadius: '4px',
-                                    width: '30px',
-                                    height: '30px',
-                                    cursor: 'pointer',
-                                    fontSize: '16px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {dir.label}
-                            </button>
-                        ))}
+                        {DIRECTIONS.map((dir) => {
+                            const isActive = data?.directionCode === dir.code;
+                            return (
+                                <button
+                                    key={dir.code}
+                                    type="button"
+                                    onClick={() => handleDirectionSelect(dir.code)}
+                                    title={dir.title}
+                                    className={`bendable-edge__dir-btn ${isActive ? 'is-active' : ''
+                                        }`}
+                                >
+                                    {dir.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </EdgeLabelRenderer>
             )}

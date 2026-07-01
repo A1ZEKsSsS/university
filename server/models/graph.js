@@ -22,7 +22,7 @@ const GraphSchema = new mongoose.Schema({
             label: { type: String, default: '' },
         }
     }],
-    // Массив соединений (ребер)
+
     edges: [{
         id: { type: String, required: true },
         source: { type: String, required: true },
@@ -30,7 +30,7 @@ const GraphSchema = new mongoose.Schema({
         type: { type: String, default: 'bendable' },
         sourceHandle: { type: String },
         targetHandle: { type: String },
-        label: { type: String }, // <--- ДОБАВЬ ЭТУ СТРОКУ, ЧТОБЫ СОХРАНЯЛСЯ ВЕС!
+        label: { type: String },
         data: {
             weight: { type: Number, default: 0 },
             directionCode: { type: Number, default: 1 },
