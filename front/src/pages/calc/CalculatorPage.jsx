@@ -407,7 +407,7 @@ const CalculatorContent = () => {
                                 title="Розкласти граф: зверху вниз"
                                 disabled={nodes.length < 2}
                             >
-                                ⬇ Упорядкувати
+                                ⬇ По вертикалi
                             </button>
                             <button
                                 onClick={() => handleAutoLayout('LR')}
