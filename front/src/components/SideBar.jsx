@@ -1,68 +1,131 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { observer } from 'mobx-react-lite';
 import IconClose from './img/close.png';
 import IconMenu from './img/menu.png';
-import { MarkerType } from 'reactflow';
 
-const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, onDeleteEdge, onWeightChange, onOpenSaveModal, onOpenLoadModal }) => {
+// ─── Утиліти кольору ───────────────────────────────────────────
+
+const hexToRgb = (hex) => {
+    const h = hex.replace('#', '');
+    if (h.length !== 6) return { r: 255, g: 255, b: 255 };
+    return {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16),
+    };
+};
+
+const rgbToHex = (r, g, b) => {
+    const toHex = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const isValidHex = (hex) => /^#[0-9a-fA-F]{6}$/.test(hex);
+
+const PRESET_COLORS = [
+    '#ffffff', '#f1f5f9', '#fef9c3', '#fee2e2',
+    '#dcfce7', '#dbeafe', '#ede9fe', '#fce7f3',
+    '#0f172a', '#1e40af', '#15803d', '#b91c1c',
+];
+
+// ─── Компонент повзунка ────────────────────────────────────────
+
+const ColorSlider = ({ label, value, min = 0, max = 255, color, onChange }) => (
+    <div className="color-slider">
+        <div className="color-slider__header">
+            <span className="color-slider__label">{label}</span>
+            <span className="color-slider__value">{value}</span>
+        </div>
+        <input
+            type="range"
+            min={min}
+            max={max}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="color-slider__input"
+            style={{ '--slider-color': color }}
+        />
+    </div>
+);
+
+// ─── Головний компонент ────────────────────────────────────────
+
+const Sidebar = ({
+    onCalculate,
+    error,
+    isLoading,
+    edgeMenu,
+    onDirectionChange,
+    onDeleteEdge,
+    onWeightChange,
+    onOpenSaveModal,
+    onOpenLoadModal,
+    // Нові пропси для кольору вузла:
+    selectedNode,       // { id, data } | null
+    onNodeColorChange,  // (nodeId, color) => void
+}) => {
     const navigate = useNavigate();
     const { auth } = useStore();
 
     const [localWeight, setLocalWeight] = useState('');
     const [isOpen, setIsOpen] = useState(true);
 
+    // RGB стейт для повзунків
+    const [rgb, setRgb] = useState({ r: 255, g: 255, b: 255 });
+    // HEX в текстовому полі (може бути неповним поки юзер друкує)
+    const [hexInput, setHexInput] = useState('#ffffff');
+
+    // Коли змінився виділений вузол — оновлюємо picker
+    useEffect(() => {
+        const color = selectedNode?.data?.color || '#ffffff';
+        setRgb(hexToRgb(color));
+        setHexInput(color);
+    }, [selectedNode]);
+
+    // Коли змінився edgeMenu — оновлюємо вагу
+    useEffect(() => {
+        if (edgeMenu) setLocalWeight(edgeMenu.weight);
+    }, [edgeMenu]);
+
     const handleLogout = () => {
         if (auth.unauthorize) auth.unauthorize();
         navigate('/login');
     };
 
-    useEffect(() => {
-        if (edgeMenu) {
-            setLocalWeight(edgeMenu.weight);
+    // ─── Обробники кольору ──────────────────────────────────────
+
+    const applyColor = useCallback((hex) => {
+        if (!selectedNode || !isValidHex(hex)) return;
+        onNodeColorChange(selectedNode.id, hex);
+    }, [selectedNode, onNodeColorChange]);
+
+    const handleSliderChange = useCallback((channel, value) => {
+        const newRgb = { ...rgb, [channel]: value };
+        setRgb(newRgb);
+        const hex = rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+        setHexInput(hex);
+        applyColor(hex);
+    }, [rgb, applyColor]);
+
+    const handleHexInput = (e) => {
+        const val = e.target.value;
+        setHexInput(val);
+        if (isValidHex(val)) {
+            const newRgb = hexToRgb(val);
+            setRgb(newRgb);
+            applyColor(val);
         }
-    }, [edgeMenu]);
-    // const handleDirectionChange = (directionCode) => {
-    //     if (!edgeMenu) return;
+    };
 
-    //     const isBiDir = directionCode === 1;
-    //     const isForward = directionCode === 3;
-    //     const isReverse = directionCode === 2;
+    const handlePreset = (color) => {
+        setHexInput(color);
+        setRgb(hexToRgb(color));
+        applyColor(color);
+    };
 
-    //     const ARROW_END = {
-    //         type: MarkerType.ArrowClosed,
-    //         width: 20,
-    //         height: 20,
-    //         color: '#b1b1b7',
-    //     };
-
-    //     const ARROW_START = {
-    //         type: MarkerType.ArrowClosed,
-    //         width: 20,
-    //         height: 20,
-    //         color: '#b1b1b7',
-    //         orient: 'auto-start-reverse',
-    //     };
-
-    //     setEdges((eds) => eds.map((e) => {
-    //         if (e.id !== edgeMenu.edgeId) return e;
-    //         return {
-    //             ...e,
-    //             data: { ...e.data, directionCode },
-    //             markerEnd: (isBiDir || isForward) ? ARROW_END : undefined,
-    //             markerStart: (isBiDir || isReverse) ? ARROW_START : undefined,
-    //         };
-    //     }));
-
-    //     setEdgeMenu(null);
-    // };
-
-    // const handleDeleteEdge = () => {
-    //     if (!edgeMenu) return;
-    //     setEdges((eds) => eds.filter((e) => e.id !== edgeMenu.edgeId));
-    //     setEdgeMenu(null);
-    // };
+    const currentColor = rgbToHex(rgb.r, rgb.g, rgb.b);
 
     return (
         <div className={`sidebar ${!isOpen ? 'closed' : ''}`}>
@@ -70,22 +133,97 @@ const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, o
             <button
                 className="sidebar-toggle"
                 onClick={() => setIsOpen(!isOpen)}
-                title={isOpen ? "Згорнути" : "Розгорнути"}
+                title={isOpen ? 'Згорнути' : 'Розгорнути'}
             >
-                {isOpen ? <img src={IconClose} alt="Close" className="icon-close" /> : <img src={IconMenu} alt="Menu" className="icon-menu" />}
+                {isOpen
+                    ? <img src={IconClose} alt="Close" className="icon-close" />
+                    : <img src={IconMenu} alt="Menu" className="icon-menu" />
+                }
             </button>
 
             <div className="sidebar-content">
-
                 <h2 className="sidebar-title">Управління</h2>
 
                 <p className="description">
-                    Двічі клацніть: додати точку. <br />
+                    Двічі клацніть: додати точку.<br />
                     Потягніть: створити зв'язок.
                 </p>
 
+                {/* ── Колір вузла ── */}
+                {selectedNode && (
+                    <div className="sidebar-section fade-in">
+                        <h4 className="settings-title">
+                            Колір вузла
+                            <span className="settings-node-name">
+                                {selectedNode.data?.label || selectedNode.id}
+                            </span>
+                        </h4>
+
+                        {/* Превʼю + HEX */}
+                        <div className="color-preview-row">
+                            <div
+                                className="color-preview-swatch"
+                                style={{ backgroundColor: currentColor }}
+                            />
+                            <input
+                                type="text"
+                                value={hexInput}
+                                onChange={handleHexInput}
+                                className="color-hex-input"
+                                placeholder="#ffffff"
+                                maxLength={7}
+                                spellCheck={false}
+                            />
+                        </div>
+
+                        {/* Повзунки RGB */}
+                        <div className="color-sliders">
+                            <ColorSlider
+                                label="R"
+                                value={rgb.r}
+                                color={`rgb(${rgb.r}, 0, 0)`}
+                                onChange={(v) => handleSliderChange('r', v)}
+                            />
+                            <ColorSlider
+                                label="G"
+                                value={rgb.g}
+                                color={`rgb(0, ${rgb.g}, 0)`}
+                                onChange={(v) => handleSliderChange('g', v)}
+                            />
+                            <ColorSlider
+                                label="B"
+                                value={rgb.b}
+                                color={`rgb(0, 0, ${rgb.b})`}
+                                onChange={(v) => handleSliderChange('b', v)}
+                            />
+                        </div>
+
+                        {/* Пресети */}
+                        <div className="color-presets">
+                            {PRESET_COLORS.map((c) => (
+                                <button
+                                    key={c}
+                                    className={`color-preset ${currentColor === c ? 'is-active' : ''}`}
+                                    style={{ backgroundColor: c }}
+                                    onClick={() => handlePreset(c)}
+                                    title={c}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Скинути */}
+                        <button
+                            className="color-reset-btn"
+                            onClick={() => handlePreset('#ffffff')}
+                        >
+                            Скинути колір
+                        </button>
+                    </div>
+                )}
+
+                {/* ── Налаштування ребра ── */}
                 {edgeMenu && (
-                    <div className="sidebar-edge-settings fade-in">
+                    <div className="sidebar-section fade-in">
                         <h4 className="settings-title">Налаштування зв'язку</h4>
 
                         <div className="settings-actions">
@@ -99,34 +237,21 @@ const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, o
                                 <span className="btn-icon">←</span> Назад
                             </button>
 
-                            <div className="settings-divider"></div>
+                            <div className="settings-divider" />
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '4px 0' }}>
-                                <label style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>ВАГА (ВІДСТАНЬ):</label>
-                                <div style={{ display: 'flex', gap: '8px' }}>
+                            <div className="weight-control-group">
+                                <label>ВАГА (ВІДСТАНЬ):</label>
+                                <div className="weight-input-wrapper">
                                     <input
                                         type="number"
+                                        min="0"
                                         value={localWeight}
                                         onChange={(e) => setLocalWeight(e.target.value)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '8px',
-                                            borderRadius: '6px',
-                                            border: '1px solid #cbd5e1',
-                                            outline: 'none'
-                                        }}
+                                        className="weight-input"
                                     />
                                     <button
                                         onClick={() => onWeightChange(localWeight)}
-                                        style={{
-                                            padding: '8px 12px',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold'
-                                        }}
+                                        className="weight-save-btn"
                                         title="Зберегти вагу"
                                     >
                                         ✓
@@ -134,7 +259,7 @@ const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, o
                                 </div>
                             </div>
 
-                            <div className="settings-divider"></div>
+                            <div className="settings-divider" />
 
                             <button className="settings-btn delete-btn" onClick={onDeleteEdge}>
                                 <span className="btn-icon">🗑️</span> Видалити
@@ -151,19 +276,15 @@ const Sidebar = ({ onCalculate, error, isLoading, edgeMenu, onDirectionChange, o
                     {isLoading ? '...' : 'Розрахувати'}
                 </button>
 
-                {error && (
-                    <div className="error-box">
-                        {error}
-                    </div>
-                )}
+                {error && <div className="error-box">{error}</div>}
 
-                <div className="spacer"></div>
+                <div className="spacer" />
 
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                    <button className="btn history-btn" style={{ flex: 1, margin: 0 }} onClick={onOpenSaveModal}>
+                <div className="sidebar-save-row">
+                    <button className="btn history-btn" onClick={onOpenSaveModal}>
                         💾 Зберегти
                     </button>
-                    <button className="btn history-btn" style={{ flex: 1, margin: 0 }} onClick={onOpenLoadModal}>
+                    <button className="btn history-btn" onClick={onOpenLoadModal}>
                         📂 Відкрити
                     </button>
                 </div>

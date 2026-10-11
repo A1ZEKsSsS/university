@@ -7,6 +7,7 @@ import MatrixInput from '../../components/MatrixInput';
 import { generateMatrices } from '../../utils/MatrixHelpres';
 import { getLayoutedElements } from '../../utils/autoLayout';
 import axios from 'axios';
+import { useCallback } from 'react';
 // import './CalculatorPage.css';
 
 const initialNodes = [
@@ -47,6 +48,9 @@ const CalculatorContent = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const [edgeMenu, setEdgeMenu] = useState(null);
+
+    const [selectedNode, setSelectedNode] = useState(null);
+
 
     const [savedGraphs, setSavedGraphs] = useState([]);
     const [isGraphModalOpen, setIsGraphModalOpen] = useState(false);
@@ -365,6 +369,18 @@ const CalculatorContent = () => {
             setHighlightedPaths([]);
         }
     };
+    const handleNodeColorChange = useCallback((nodeId, color) => {
+        setNodes((nds) =>
+            nds.map((n) => n.id === nodeId
+                ? { ...n, data: { ...n.data, color } }
+                : n
+            )
+        );
+    }, [setNodes]);
+
+    const handleSelectionChange = useCallback(({ nodes: selected }) => {
+        setSelectedNode(selected.length === 1 ? selected[0] : null);
+    }, []);
 
     const clearHighlight = () => setHighlightedPaths([]);
 
@@ -380,6 +396,8 @@ const CalculatorContent = () => {
                 onWeightChange={handleEdgeWeightChange}
                 onOpenSaveModal={openSaveModal}
                 onOpenLoadModal={openLoadModal}
+                selectedNode={selectedNode}
+                onNodeColorChange={handleNodeColorChange}
             />
 
             <div className="flowboard-container">
@@ -447,6 +465,7 @@ const CalculatorContent = () => {
                             setEdgeMenu={setEdgeMenu}
                             onDirectionChange={handleDirectionChange}
                             onDeleteEdge={handleDeleteEdge}
+                            onSelectionChange={handleSelectionChange}
                         />
 
                         {highlightedPaths.length > 1 && viewMode === 'visual' && (

@@ -20,6 +20,7 @@ const GraphSchema = new mongoose.Schema({
         },
         data: {
             label: { type: String, default: '' },
+            color: { type: String, default: '#ffffff' },
         }
     }],
 

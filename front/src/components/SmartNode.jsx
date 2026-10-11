@@ -1,13 +1,37 @@
 import React, { memo, useCallback } from 'react';
 import { Handle, Position, useStore } from 'reactflow';
-// import './SmartNode.css';
+
 
 const MIN_WIDTH = 100;
 const HANDLE_SPACING = 20;
 const HANDLE_PADDING = 40;
 
-// Селектор повертає число, тому React порівнює по === і не перерендерює вузол
-// при змінах, які його не стосуються (зокрема при драгу згину іншого ребра).
+const DEFAULT_BG = '#ffffff';
+
+// Темний або світлий текст залежно від фону (формула W3C)
+const getTextColor = (hex) => {
+    if (!hex || hex === DEFAULT_BG) return '#1a1a1a';
+    const h = hex.replace('#', '');
+    if (h.length < 6) return '#1a1a1a';
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55
+        ? '#1a1a1a'
+        : '#ffffff';
+};
+
+// Рамка трохи темніша за фон
+const getBorderColor = (hex) => {
+    if (!hex || hex === DEFAULT_BG) return '#333333';
+    const h = hex.replace('#', '');
+    if (h.length < 6) return '#333333';
+    const r = Math.max(0, parseInt(h.slice(0, 2), 16) - 40);
+    const g = Math.max(0, parseInt(h.slice(2, 4), 16) - 40);
+    const b = Math.max(0, parseInt(h.slice(4, 6), 16) - 40);
+    return `rgb(${r},${g},${b})`;
+};
+
 const makeCountSelector = (id, direction) => (s) => {
     const key = direction === 'in' ? 'target' : 'source';
     let count = 0;
@@ -21,20 +45,25 @@ const SmartNode = ({ id, data, isConnectable, selected }) => {
     const incomingRaw = useStore(useCallback(makeCountSelector(id, 'in'), [id]));
     const outgoingRaw = useStore(useCallback(makeCountSelector(id, 'out'), [id]));
 
-    // Мінімум один handle кожного типу, щоб до вузла можна було підключитися,
-    // навіть якщо він ще без зв'язків.
     const incomingCount = Math.max(1, incomingRaw);
     const outgoingCount = Math.max(1, outgoingRaw);
-
     const maxPorts = Math.max(incomingCount, outgoingCount);
     const dynamicWidth = Math.max(MIN_WIDTH, maxPorts * HANDLE_SPACING + HANDLE_PADDING);
 
-    const getHandleLeft = (index, total) => `${(100 / (total + 1)) * (index + 1)}%`;
+    const getHandleLeft = (index, total) =>
+        `${(100 / (total + 1)) * (index + 1)}%`;
+
+    const color = data?.color || DEFAULT_BG;
 
     return (
         <div
             className={`smart-node ${selected ? 'is-selected' : ''}`}
-            style={{ width: `${dynamicWidth}px` }}
+            style={{
+                width: `${dynamicWidth}px`,
+                backgroundColor: color,
+                borderColor: getBorderColor(color),
+                color: getTextColor(color),
+            }}
         >
             {Array.from({ length: incomingCount }).map((_, i) => (
                 <Handle

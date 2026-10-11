@@ -25,22 +25,16 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
         setNodes((nds) => [...nds, newNode]);
     };
 
-    const handleRemoveNode = (nodeId) => {
-        setNodeToDelete(nodeId);
-    };
+    const handleRemoveNode = (nodeId) => setNodeToDelete(nodeId);
 
     const confirmDeleteNode = () => {
         if (!nodeToDelete) return;
-
         setNodes((nds) => nds.filter((n) => n.id !== nodeToDelete));
         setEdges((eds) => eds.filter((e) => e.source !== nodeToDelete && e.target !== nodeToDelete));
-
         setNodeToDelete(null);
     };
 
-    const cancelDeleteNode = () => {
-        setNodeToDelete(null);
-    };
+    const cancelDeleteNode = () => setNodeToDelete(null);
 
     const ARROW_CONFIG = {
         type: 'arrowclosed',
@@ -50,11 +44,8 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
     };
 
     const handleBindChange = (source, target, currentEdge) => {
-
         let currentDir = 0;
-        if (currentEdge) {
-            currentDir = currentEdge.data?.directionCode || 1;
-        }
+        if (currentEdge) currentDir = currentEdge.data?.directionCode || 1;
 
         let nextDir = 0;
         if (currentDir === 0) nextDir = 1;
@@ -64,7 +55,6 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
 
         setEdges((eds) => {
             const filtered = eds.filter(e => !(e.source === source && e.target === target));
-
             if (nextDir === 0) return filtered;
 
             const isBiDir = nextDir === 1;
@@ -76,47 +66,42 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                 source,
                 target,
                 label: currentEdge?.label || '1',
-
                 type: 'smoothstep',
                 pathOptions: { borderRadius: 20 },
-
                 sourceHandle: null,
                 targetHandle: null,
-
                 data: {
                     weight: currentEdge?.data?.weight || 1,
-                    directionCode: nextDir
+                    directionCode: nextDir,
                 },
-
                 markerEnd: (isBiDir || isForward) ? ARROW_CONFIG : undefined,
                 markerStart: (isBiDir || isReverse) ? ARROW_CONFIG : undefined,
-
-                style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' }
+                style: { strokeWidth: 2, stroke: '#b1b1b7', cursor: 'pointer' },
             };
 
             return [...filtered, newEdge];
         });
     };
 
-
     const handleWeightChange = (source, target, value) => {
+        // Фізично блокуємо від'ємні — якщо прийшло від'ємне число, ігноруємо
+        const numValue = value === '' ? 0 : parseInt(value, 10);
+        if (Number.isFinite(numValue) && numValue < 0) return;
+
         setEdges((eds) => {
             const edgeExists = eds.find(e => e.source === source && e.target === target);
-            const numValue = value === '' ? 0 : parseInt(value, 10);
+            if (!edgeExists) return eds;
 
-            if (edgeExists) {
-                return eds.map(e => {
-                    if (e.source === source && e.target === target) {
-                        return {
-                            ...e,
-                            label: value.toString(),
-                            data: { ...e.data, weight: numValue }
-                        };
-                    }
-                    return e;
-                });
-            }
-            return eds;
+            return eds.map(e => {
+                if (e.source === source && e.target === target) {
+                    return {
+                        ...e,
+                        label: value.toString(),
+                        data: { ...e.data, weight: numValue },
+                    };
+                }
+                return e;
+            });
         });
     };
 
@@ -164,7 +149,12 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                         {nodes.map(n => (
                                             <th key={n.id}>
                                                 {n.data.label}
-                                                <button className="remove-node-btn" onClick={() => handleRemoveNode(n.id)}>&times;</button>
+                                                <button
+                                                    className="remove-node-btn"
+                                                    onClick={() => handleRemoveNode(n.id)}
+                                                >
+                                                    &times;
+                                                </button>
                                             </th>
                                         ))}
                                     </tr>
@@ -177,7 +167,10 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                                 const isSelf = source.id === target.id;
                                                 const edge = findEdge(source.id, target.id);
                                                 return (
-                                                    <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''}>
+                                                    <td
+                                                        key={`${source.id}-${target.id}`}
+                                                        className={isSelf ? 'disabled-cell' : ''}
+                                                    >
                                                         {!isSelf && (
                                                             <button
                                                                 onClick={() => handleBindChange(source.id, target.id, edge)}
@@ -213,18 +206,21 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                             {nodes.map(target => {
                                                 const isSelf = source.id === target.id;
                                                 const edge = findEdge(source.id, target.id);
-                                                const isDisabled = !edge || isSelf;
 
                                                 return (
-                                                    <td key={`${source.id}-${target.id}`} className={isSelf ? 'disabled-cell' : ''}>
+                                                    <td
+                                                        key={`${source.id}-${target.id}`}
+                                                        className={isSelf ? 'disabled-cell' : ''}
+                                                    >
                                                         {!isSelf && (
                                                             <input
                                                                 type="number"
+                                                                min="0"
                                                                 className="weight-input-table"
                                                                 value={edge ? (edge.label || '') : ''}
                                                                 disabled={!edge}
                                                                 onChange={(e) => handleWeightChange(source.id, target.id, e.target.value)}
-                                                                placeholder={edge ? "0" : ""}
+                                                                placeholder={edge ? '0' : ''}
                                                             />
                                                         )}
                                                     </td>
@@ -245,7 +241,12 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                         <div key={source.id} className="mobile-card">
                             <div className="mobile-card-header">
                                 <span>Від: <b>{source.data.label}</b></span>
-                                <button className="remove-node-btn" onClick={() => handleRemoveNode(source.id)}>&times;</button>
+                                <button
+                                    className="remove-node-btn"
+                                    onClick={() => handleRemoveNode(source.id)}
+                                >
+                                    &times;
+                                </button>
                             </div>
 
                             <div className="mobile-connections">
@@ -254,7 +255,10 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                     const isActive = !!edge;
 
                                     return (
-                                        <div key={target.id} className={`mobile-row ${isActive ? 'active' : ''}`}>
+                                        <div
+                                            key={target.id}
+                                            className={`mobile-row ${isActive ? 'active' : ''}`}
+                                        >
                                             <span className="target-label">до {target.data.label}</span>
 
                                             <div className="mobile-controls">
@@ -267,6 +271,7 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
 
                                                 <input
                                                     type="number"
+                                                    min="0"
                                                     className="weight-input-mobile"
                                                     disabled={!isActive}
                                                     value={edge ? (edge.label || '') : ''}
@@ -275,21 +280,23 @@ const MatrixInput = ({ nodes, setNodes, edges, setEdges }) => {
                                                 />
                                             </div>
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
                         </div>
                     ))}
                 </div>
             )}
+
             {nodeToDelete && (
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <h4>Підтвердження видалення</h4>
                         <p>
-                            Видалити точку <b>{nodes.find(n => n.id === nodeToDelete)?.data?.label}</b> та всі пов'язані з нею лінії?
+                            Видалити точку{' '}
+                            <b>{nodes.find(n => n.id === nodeToDelete)?.data?.label}</b>{' '}
+                            та всі пов'язані з нею лінії?
                         </p>
-
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={cancelDeleteNode}>
                                 Відміна

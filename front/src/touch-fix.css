@@ -1,0 +1,273 @@
+/* ============================================
+   TOUCH FIX — додайте в кінець main.css або mobile.css
+   ============================================ */
+
+/* Критично: ReactFlow ПОВИНЕН мати touch-action: none
+   на всіх батьківських контейнерах аж до body */
+
+html,
+body,
+#root {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* Граф-контейнер */
+.flow-wrapper,
+.flow-wrapper > div,
+.react-flow,
+.react-flow__renderer,
+.react-flow__zoompane,
+.react-flow__pane {
+  touch-action: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Вузли можна перетягувати пальцем */
+.react-flow__node {
+  touch-action: none;
+}
+
+/* Але скролабельні контейнери ПОЗА графом — дозволяємо скрол */
+.sidebar-content,
+.calc-modal__list,
+.matrix-container,
+.table-scroll-area,
+.restult-matrix-container {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* calc-view і flowboard-container не повинні заважати ReactFlow */
+.calc-view,
+.calc-view__panel,
+.flowboard-container {
+  touch-action: none;
+}
+
+/* Toolbar над графом — дозволяємо горизонтальний скрол */
+.calc-toolbar {
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   touch-fix.css — підключіть ОСТАННІМ після всіх CSS
+   ============================================ */
+
+/* 1. Базова блокування scroll на сторінці */
+html,
+body,
+#root {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* 2. Весь стек ReactFlow — touch-action: none
+      Без цього браузер перехоплює pan/zoom у себе */
+.flow-wrapper,
+.react-flow,
+.react-flow__renderer,
+.react-flow__zoompane,
+.react-flow__pane,
+.react-flow__viewport,
+.react-flow__container {
+  touch-action: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 3. Вузли — перетягування пальцем */
+.react-flow__node {
+  touch-action: none !important;
+}
+
+/* 4. Handle-точки — КРИТИЧНО для з'єднання ребер пальцем.
+      Без цього drag від handle не спрацьовує на touch */
+.react-flow__handle {
+  touch-action: none !important;
+  /* Збільшуємо зону тапу на мобільних */
+}
+
+@media (max-width: 767px) {
+  .react-flow__handle {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+  }
+}
+
+/* 5. Контейнери ПОЗА графом — дозволяємо звичайний скрол */
+.sidebar-content,
+.calc-modal__list,
+.matrix-container,
+.table-scroll-area,
+.restult-matrix-container,
+.cards-grid {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 6. Toolbar — горизонтальний скрол */
+.calc-toolbar {
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 7. Контейнери що обгортають граф — не заважають */
+.calc-view,
+.calc-view__panel,
+.flowboard-container {
+  touch-action: none;
+}
+
+/* 8. Модалки — вертикальний скрол всередині */
+.modal-content {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* ============================================
+   touch-fix.css — підключіть ОСТАННІМ
+   ============================================ */
+
+/* 1. Базова блокування scroll на сторінці */
+html,
+body,
+#root {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* 2. Весь стек ReactFlow */
+.flow-wrapper,
+.react-flow,
+.react-flow__renderer,
+.react-flow__zoompane,
+.react-flow__pane,
+.react-flow__viewport,
+.react-flow__container {
+  touch-action: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.react-flow__node {
+  touch-action: none !important;
+}
+
+/* 3. Handles — критично для з'єднання пальцем */
+.react-flow__handle {
+  touch-action: none !important;
+}
+
+@media (max-width: 767px) {
+  .react-flow__handle {
+    width: 20px !important;
+    height: 20px !important;
+    border-radius: 50% !important;
+  }
+}
+
+/* 4. Sidebar — скрол дозволений */
+.sidebar {
+  /* overflow: hidden прибираємо щоб sidebar-content міг скролитись */
+  overflow: visible !important;
+}
+
+.sidebar-content {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior: contain !important;
+}
+
+/* 5. Інші скролабельні зони поза графом */
+.calc-modal__list,
+.matrix-container,
+.table-scroll-area,
+.restult-matrix-container,
+.cards-grid {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.calc-toolbar {
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 6. Контейнери графа */
+.calc-view,
+.calc-view__panel,
+.flowboard-container {
+  touch-action: none;
+}
+
+/* 7. Модалки */
+.modal-content {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 8. Візуальний індикатор довгого тапу на вузлі */
+@media (max-width: 767px) {
+  .react-flow__node:active::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 12px;
+    border: 2px solid #ef4444;
+    animation: longPressRing 0.6s ease forwards;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  @keyframes longPressRing {
+    0% {
+      opacity: 0;
+      transform: scale(0.9);
+      border-color: #94a3b8;
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+      border-color: #f97316;
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1.05);
+      border-color: #ef4444;
+    }
+  }
+
+  /* Збільшуємо handle для зручності з'єднання пальцем */
+  .smart-node__handle {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Більші кнопки модалок */
+  .modal-actions button {
+    min-height: 48px;
+  }
+
+  /* Sidebar не обрізає контент */
+  .sidebar {
+    overflow: visible !important;
+  }
+
+  /* Sidebar-content займає всю доступну висоту і скролиться */
+  .sidebar-content {
+    height: 100%;
+    max-height: calc(100dvh - 60px);
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+  }
+}

@@ -7,7 +7,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import SmartNode from './SmartNode';
 import SmartBendableEdge from './BendableEdge';
-// import './FlowBoard.css';
+
 
 // --- Константи поза компонентом ---
 
@@ -32,7 +32,7 @@ const makeId = (prefix = 'e') => {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 };
 
-const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesChange, onEdgeClick }) => {
+const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesChange, onEdgeClick, onSelectionChange }) => {
     const reactFlowWrapper = useRef(null);
     const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
@@ -255,6 +255,32 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         setDeleteTarget({ type: 'node', item: node });
     }, []);
 
+    // Довгий тап для видалення вузла на тачскріні
+    // Слухаємо pointerdown/up на wrapper — ReactFlow передає події через DOM
+    const longPressTimer = useRef(null);
+    const longPressTarget = useRef(null);
+
+    const handleFlowPointerDown = useCallback((event) => {
+        if (event.pointerType === 'mouse') return;
+        const nodeEl = event.target.closest('.react-flow__node');
+        if (!nodeEl) return;
+        const nodeId = nodeEl.getAttribute('data-id');
+        if (!nodeId) return;
+        longPressTarget.current = nodeId;
+        longPressTimer.current = setTimeout(() => {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) setDeleteTarget({ type: 'node', item: node });
+        }, 600);
+    }, [nodes]);
+
+    const handleFlowPointerUp = useCallback(() => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+        longPressTarget.current = null;
+    }, []);
+
     const onEdgeContextMenu = useCallback((event, edge) => {
         event.preventDefault();
         event.stopPropagation();
@@ -280,11 +306,39 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
         setDeleteTarget(null);
     }, []);
 
+    // Double-tap для тачскрінів через pointerup (надійніше ніж onPaneClick)
+    const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
+
+    const handleWrapperPointerUp = useCallback((event) => {
+        // Тільки тач/стілус, не миша
+        if (event.pointerType === 'mouse') return;
+        // Якщо торкнулись вузла або ребра — ігноруємо
+        if (event.target.closest('.react-flow__node') ||
+            event.target.closest('.react-flow__edge') ||
+            event.target.closest('.react-flow__handle')) return;
+
+        const now = Date.now();
+        const dx = Math.abs(event.clientX - lastTapRef.current.x);
+        const dy = Math.abs(event.clientY - lastTapRef.current.y);
+        const isDoubleTap = (now - lastTapRef.current.time < 350) && dx < 20 && dy < 20;
+
+        if (isDoubleTap) {
+            lastTapRef.current = { time: 0, x: 0, y: 0 };
+            // Передаємо координати тапу як clientX/clientY
+            handleWrapperDoubleClick(event);
+        } else {
+            lastTapRef.current = { time: now, x: event.clientX, y: event.clientY };
+        }
+    }, [handleWrapperDoubleClick]);
+
     return (
         <div
             className="flow-wrapper"
             ref={reactFlowWrapper}
             onDoubleClick={handleWrapperDoubleClick}
+            onPointerUp={(e) => { handleWrapperPointerUp(e); handleFlowPointerUp(); }}
+            onPointerDown={handleFlowPointerDown}
+            onPointerCancel={handleFlowPointerUp}
         >
             <ReactFlow
                 nodes={nodes}
@@ -297,12 +351,18 @@ const FlowBoard = ({ nodes, setNodes, edges, setEdges, onNodesChange, onEdgesCha
                 onEdgeContextMenu={onEdgeContextMenu}
                 onEdgeClick={onEdgeClick}
                 onNodeDoubleClick={onNodeDoubleClick}
+                onSelectionChange={onSelectionChange}
                 edgeTypes={edgeTypes}
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 fitView
                 zoomOnDoubleClick={false}
                 deleteKeyCode={['Backspace', 'Delete']}
+                panOnDrag={true}
+                zoomOnPinch={true}
+                zoomOnScroll={true}
+                panOnScroll={false}
+                preventScrolling={true}
             >
                 <Controls />
                 <Background variant="dots" gap={20} size={1} color="#ccc" />
